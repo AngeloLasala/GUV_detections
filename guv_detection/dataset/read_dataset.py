@@ -7,8 +7,9 @@ import json
 import argparse
 import numpy as np 
 import matplotlib.pyplot as plt
+from PIL import Image
 
-def plot_image_label(image_path, label_path):
+def read_image_label(image_path, label_path, show_plot=False):
     """
     Function to plot the image and label from given path
 
@@ -19,6 +20,51 @@ def plot_image_label(image_path, label_path):
     label_path : str
         Path to the label file
     """
+    name = os.path.basename(image_path.split('.')[0])
+    image = Image.open(image_path)
+    W, H = image.size
+
+    # read the txt file line by line
+    parent_labels = os.path.dirname(os.path.dirname(label_path))
+    new_label_path = os.path.join(parent_labels, 'labels_new')
+    
+    boxes = []
+    with open(label_path, 'r') as file:
+        for line in file:
+            parts = line.strip().split()
+            if len(parts) == 5:
+                class_id = int(parts[0])
+                x_center = float(parts[1])
+                y_center = float(parts[2])
+                width = float(parts[3])
+                height = float(parts[4])
+                boxes.append([class_id, x_center, y_center, width, height])
+
+    if show_plot:
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        ax.set_title(f"{name}", fontsize=22)
+        ax.imshow(image)
+        ax.axis('off')
+
+        for box in boxes:
+            class_id, x_center, y_center, width, height = box
+            x_center *= W
+            y_center *= H
+            width *= W
+            height *= H
+
+            xmin = int(x_center - (width / 2)) 
+            xmax = int(x_center + (width / 2)) 
+            ymin = int(y_center - (height / 2))
+            ymax = int(y_center + (height / 2)) 
+            
+            # Create a rectangle patch
+            rect = plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin, linewidth=5, edgecolor='r', facecolor='none')
+            ax.add_patch(rect)
+        plt.show()
+    return name, W, H, boxes
+
+
 def main(args):
     """
     Main function to read the dataset and print statistics
@@ -41,34 +87,68 @@ def main(args):
     if not os.path.exists(os.path.join(path, 'test')):
         raise FileNotFoundError(f"Test folder not found in {path}")
 
-    data_split = ['train', 'val', 'test']
+    data_split = ['test', 'train', 'val']
 
+    dataset_info = {}
     for split in data_split:
+        split_info = {}
         images_path = os.path.join(path, split, 'images')
-        labels_path = os.path.join(path, split, 'labels')
+        labels_path = os.path.join(path, split, 'labels_new')
 
-        # Check if images and labels folders exist
-        if not os.path.exists(images_path):
-            raise FileNotFoundError(f"Images folder not found in {images_path}")
-        if not os.path.exists(labels_path):
-            raise FileNotFoundError(f"Labels folder not found in {labels_path}")
-        
-        for i,j in zip(os.listdir(images_path), os.listdir(labels_path)):
-            print(f"Image: {i}, Label: {j}")
 
-        # # Initialize counters
-        # total_images = 0
-        # total_boxes = 0
+        for image in os.listdir(images_path):
+            image_path = os.path.join(images_path, image)
+            label_path = os.path.join(labels_path, image.replace('.jpg', '.txt'))
+            if not os.path.exists(label_path):
+                continue
+            name, W, H, boxes = read_image_label(image_path, label_path)
+            split_info[name] = {
+                'width': W,
+                'height': H,
+                'boxes': boxes,
+                'n_boxes': len(boxes)
+            }
+        dataset_info[split] = split_info
 
-        # for txt_file in txt_files:
-        #     with open(os.path.join(split_path, txt_file), 'r') as file:
-        #         lines = file.readlines()
-        #         total_images += 1
-        #         total_boxes += len(lines)
+    # Save dataset info to a JSON file
+    output_file = os.path.join(path, 'dataset_info.json')
+    with open(output_file, 'w') as f:
+        json.dump(dataset_info, f, indent=4)
 
-        # print(f"Total images in {split}: {total_images}")
-        # print(f"Total boxes in {split}: {total_boxes}")
-        # print(f"Average boxes per image in {split}: {total_boxes / total_images if total_images > 0 else 0:.2f}")
+    
+    for split, info in dataset_info.items():
+        print(f"Split: {split}")
+        print(f"Number of images: {len(info)}")
+        total_boxes = sum(len(data['boxes']) for data in info.values())
+        print(f"Total bounding boxes: {total_boxes}")
+
+        fig, ax = plt.subplots(1, 2, figsize=(15, 8), tight_layout=True)
+        ax[0].set_title(f"Number of Liposomes", fontsize=22)
+        ax[0].hist([data['n_boxes'] for data in info.values()], bins=range(0, max(data['n_boxes'] for data in info.values()) + 2), align='left', rwidth=0.8)
+        ax[0].set_xlabel('Number of Liposomes', fontsize=20)
+        ax[0].set_ylabel('Frequency', fontsize=20)
+        ax[0].tick_params(axis='both', which='major', labelsize=18)
+        ax[0].grid(linestyle=':', color='gray')
+
+        # plot the dimention of liposomes
+        ax[1].set_title(f"Dimension of Liposomes", fontsize=22)
+        widths = []
+        heights = []
+        for data in info.values():
+            for box in data['boxes']:
+                class_id, x_center, y_center, width, height = box
+                widths.append(width)
+                heights.append(height)
+        dimention = (np.array(widths) + np.array(heights) / 2) * 640
+
+        ax[1].hist(dimention, bins=np.arange(min(dimention), max(dimention) + 10, 10))
+        ax[1].set_xlabel('Dimension (pixels)', fontsize=20)
+        ax[1].set_ylabel('Frequency', fontsize=20)
+        ax[1].tick_params(axis='both', which='major', labelsize=18)
+        ax[1].grid(linestyle=':', color='gray')
+   
+    plt.show()
+    
     
 
 if __name__ == '__main__':
