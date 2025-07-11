@@ -93,7 +93,7 @@ def main(args):
     for split in data_split:
         split_info = {}
         images_path = os.path.join(path, split, 'images')
-        labels_path = os.path.join(path, split, 'labels_new')
+        labels_path = os.path.join(path, split, 'labels')
 
 
         for image in os.listdir(images_path):
@@ -101,7 +101,7 @@ def main(args):
             label_path = os.path.join(labels_path, image.replace('.jpg', '.txt'))
             if not os.path.exists(label_path):
                 continue
-            name, W, H, boxes = read_image_label(image_path, label_path, show_plot=True)
+            name, W, H, boxes = read_image_label(image_path, label_path, show_plot=False)
             split_info[name] = {
                 'width': W,
                 'height': H,
@@ -122,7 +122,7 @@ def main(args):
         total_boxes = sum(len(data['boxes']) for data in info.values())
         print(f"Total bounding boxes: {total_boxes}")
 
-        fig, ax = plt.subplots(1, 2, figsize=(15, 8), tight_layout=True)
+        fig, ax = plt.subplots(1, 2, figsize=(15, 8), tight_layout=True, num=split)
         ax[0].set_title(f"Number of Liposomes", fontsize=22)
         ax[0].hist([data['n_boxes'] for data in info.values()], bins=range(0, max(data['n_boxes'] for data in info.values()) + 2), align='left', rwidth=0.8)
         ax[0].set_xlabel('Number of Liposomes', fontsize=20)
