@@ -101,7 +101,7 @@ def main(args):
             label_path = os.path.join(labels_path, image.replace('.jpg', '.txt'))
             if not os.path.exists(label_path):
                 continue
-            name, W, H, boxes = read_image_label(image_path, label_path)
+            name, W, H, boxes = read_image_label(image_path, label_path, show_plot=True)
             split_info[name] = {
                 'width': W,
                 'height': H,

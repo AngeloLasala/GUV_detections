@@ -1,0 +1,5 @@
+train: /content/gdrive/MyDrive/Phd_notes/Liposomes_detection/DATA_txt_full/train/images
+val: /content/gdrive/MyDrive/Phd_notes/Liposomes_detection/DATA_txt_full/val/images
+
+nc: 1
+names: ['GUV']
