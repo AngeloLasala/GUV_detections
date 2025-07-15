@@ -19,19 +19,18 @@ if __name__ == "__main__":
     model = ultralytics.YOLO(model_path)
 
     # model predint on the folder
-    # test_path = os.path.join(args.folder, 'test', 'images')
-    # results = model.predict(source=os.path.join(args.folder, 'test', 'images'), save=True, save_txt=True, save_conf=True,
-    #                         project=os.path.join(args.folder, 'test'),
-    #                         iou=0.5)
+    test_path = os.path.join(args.folder, 'test', 'images')
+    results = model.predict(source=os.path.join(args.folder, 'test', 'images'), save=True, save_txt=True, save_conf=True,
+                            project=os.path.join(args.folder, 'test'))
 
     # model val on the test set
     metrics = model.val(data=os.path.join(args.folder, 'data.yaml'),  
-                        split="test",               
+                        split="train",               
                         save_json=True,   
-                        project=os.path.join(args.folder, 'test'),
+                        project=os.path.join(args.folder, 'train'),
                         verbose=True,
                         # conf=0.25,  # Confidence threshold for predictions
-                        iou=0.95,  # IoU threshold for evaluation
+                        # iou=0.95,  # IoU threshold for evaluation
                     )
                         
 
