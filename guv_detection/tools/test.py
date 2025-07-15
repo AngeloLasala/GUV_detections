@@ -30,8 +30,8 @@ if __name__ == "__main__":
                         save_json=True,   
                         project=os.path.join(args.folder, 'test'),
                         verbose=True,
-                        conf=0.25,  # Confidence threshold for predictions
-                        iou=0.5,  # IoU threshold for evaluation
+                        # conf=0.25,  # Confidence threshold for predictions
+                        iou=0.95,  # IoU threshold for evaluation
                     )
                         
 
