@@ -165,12 +165,12 @@ def analysis_edge(dict_name, central_name):
     inner_dict = {unique_image: {cut_id: [] for cut_id in cutting_list} for unique_image in dict_name.keys()}
     for unique_image, cuts in dict_name.items():
         for cut_id, guvs in cuts.items():
-            if cut_id in inner_conditions:
-                for yy, guv in enumerate(guvs):
-                    xc, yc, w, h, conf = guv
-                    if inner_conditions[cut_id](xc, yc):
-                        inner_dict[unique_image][cut_id].append(guv)
-                        inner_count += 1
+            # if cut_id in inner_conditions:
+            for yy, guv in enumerate(guvs):
+                xc, yc, w, h, conf = guv
+                # if inner_conditions[cut_id](xc, yc):
+                inner_dict[unique_image][cut_id].append(guv)
+                inner_count += 1
     print(f"Total inner edge GUVs detected: {inner_count}")
     
     center_dict = {unique_image: {cut_id: [] for cut_id in cutting_list} for unique_image in central_name.keys()}  
@@ -376,7 +376,7 @@ def reconstruct_edge_map(outer_dict, inner_dict, central_dict, prediction_folder
                     max_dim = max(w_guv, h_guv)
                     min_dim = min(w_guv, h_guv)
                     dim_rms = np.sqrt(max_dim**2 + min_dim**2) / np.sqrt(2) * mu_per_pixel 
-                    # rms_list.append(dim_rms)
+                    rms_list.append(dim_rms)
 
                     combined_image[y1:y2, x1:x2, 1] = 255
 
@@ -417,7 +417,7 @@ def reconstruct_edge_map(outer_dict, inner_dict, central_dict, prediction_folder
                     max_dim = max(w_guv, h_guv)
                     min_dim = min(w_guv, h_guv)
                     dim_rms = np.sqrt(max_dim**2 + min_dim**2) / np.sqrt(2) * mu_per_pixel                
-                    # rms_list.append(dim_rms)
+                    rms_list.append(dim_rms)
 
                     combined_image[y1:y2, x1:x2, 1] = 255
 
@@ -446,7 +446,6 @@ def reconstruct_edge_map(outer_dict, inner_dict, central_dict, prediction_folder
         ## recostrctuted image
         # fig1, ax1 = plt.subplots(4, 4, figsize=(17, 10), tight_layout=True, num=unique_image+"_real")
         pred_guv = 0
-    
         for cut_id in cut_id_positions.keys():
             ## read the image
             image_name = os.path.join(prediction_folder, unique_image + f"_{cut_id}.jpg")
@@ -459,11 +458,10 @@ def reconstruct_edge_map(outer_dict, inner_dict, central_dict, prediction_folder
             else:
                 image = np.zeros((H, W, 3), dtype=np.uint8)
             pos = cut_id_positions[cut_id]
-            # ax1[pos].imshow(image)
-            # ax1[pos].set_title(f'{cut_id}', fontsize=16)
-            # ax1[pos].axis('off')
+        #     ax1[pos].imshow(image)
+        #     ax1[pos].set_title(f'{cut_id}', fontsize=16)
+        #     ax1[pos].axis('off')
         # plt.show()
-
         print(f"Unique image: {unique_image}, Predicted GUVs: {pred_guv}")
     
     return rms_list
@@ -491,7 +489,7 @@ def main(args):
 
     inner_dict, new_inner_dict  =  counting_cutted_guv(outer_dict, inner_dict, pred_dir, args.conf_thresh, args.mu_per_pixel)
 
-    dim_list = reconstruct_edge_map(outer_dict, new_inner_dict, center_dict, pred_dir, args.conf_thresh, args.mu_per_pixel)
+    dim_list = reconstruct_edge_map(outer_dict, inner_dict, center_dict, pred_dir, args.conf_thresh, args.mu_per_pixel)
 
     print(f"Total GUVs size list: {len(dim_list)}\n")
 
@@ -508,6 +506,7 @@ def main(args):
     ax.axvline(third_quartile, color='red', linestyle='dashed', linewidth=3, label=f'Q3: {third_quartile:.2f} μm')
     ax.set_xlabel('GUV Diameter (μm)', fontsize=24)
     ax.set_ylabel('number of GUVs', fontsize=24)
+    ax.set_ylim(0, 500)
     ax.tick_params(axis='both', which='major', labelsize=20)
     ax.legend(fontsize=20)
     ax.grid(linestyle=':')
