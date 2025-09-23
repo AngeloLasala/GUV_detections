@@ -72,7 +72,7 @@ def counting_edge_boxes(prediction_folder, mu_per_pixel, conf_thresh):
                 max_dim = max(w_guv, h_guv)
                 min_dim = min(w_guv, h_guv)
 
-                if ((xc <= 0.05) or (xc >= 0.95) or (yc <= 0.05) or (yc  >= 0.95)) and (min_dim <= 0.75 * max_dim):
+                if ((xc <= 0.10) or (xc >= 0.90) or (yc <= 0.10) or (yc  >= 0.90)) and (min_dim <= 0.85 * max_dim):
                 # if min_dim <= 0.5 * max_dim:
                     # print(f"Edge box detected: xc={xc}, yc={yc}, w={w}, h={h}, conf={conf}")
                     # draw the box on the image
@@ -360,7 +360,7 @@ def reconstruct_edge_map(outer_dict, inner_dict, central_dict, prediction_folder
                     dim_rms = np.sqrt(max_dim**2 + min_dim**2) / np.sqrt(2) * mu_per_pixel
                     # rms_list.append(dim_rms)
                 
-                    combined_image[y1:y2, x1:x2, 0] = 255
+                    # combined_image[y1:y2, x1:x2, 0] = 255
             
 
             for guv in inner_dict[unique_image][cut_id]:
@@ -489,7 +489,7 @@ def main(args):
 
     inner_dict, new_inner_dict  =  counting_cutted_guv(outer_dict, inner_dict, pred_dir, args.conf_thresh, args.mu_per_pixel)
 
-    dim_list = reconstruct_edge_map(outer_dict, inner_dict, center_dict, pred_dir, args.conf_thresh, args.mu_per_pixel)
+    dim_list = reconstruct_edge_map(outer_dict, new_inner_dict, center_dict, pred_dir, args.conf_thresh, args.mu_per_pixel)
 
     print(f"Total GUVs size list: {len(dim_list)}\n")
 
