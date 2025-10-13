@@ -98,7 +98,7 @@ def main(args):
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description="Test a model on a folder of images")
-    parser.add_argument("--model", type=str, default="/home/angelo/Documenti/GUV_detector/train/weights/best.pt",
+    parser.add_argument("--model", type=str, default="/home/angelo/Documenti/GUV_detector/train_rgb/weights/best.pt",
                                              help="Path to the model file")
     parser.add_argument("--folder", type=str, default="/media/angelo/OS/Users/lasal/OneDrive - Scuola Superiore Sant'Anna/PhD_notes/Liposomes detection/DATA_training_txt/inference", 
                         help="Path to the folder containing images")
