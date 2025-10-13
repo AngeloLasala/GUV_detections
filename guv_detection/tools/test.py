@@ -9,15 +9,14 @@ import yaml
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Test a model on a folder of images")
-    parser.add_argument("--model", type=str, default="/home/angelo/Documenti/GUV_detector",
-                                             help="Path to the model file")
+    parser.add_argument("--model_size", type=str, default="n", help="size of YOLO model, e.g., n, s, m, l, x")
     parser.add_argument("--modality", type=str, default="rgb", help="Modality of the images: rgb or grey")
-    parser.add_argument("--folder", type=str, default="/media/angelo/OS/Users/lasal/OneDrive - Scuola Superiore Sant'Anna/PhD_notes/Liposomes detection/DATA_training_txt", 
+    parser.add_argument("--folder", type=str, default="/media/angelo/OS/Users/lasal/OneDrive - Scuola Superiore Sant'Anna/PhD_notes/Liposomes detection", 
                         help="Path to the Liposomes detection folder")
     args = parser.parse_args()
 
-    model_path = os.path.join(args.model, f'train_{args.modality}', 'weights', 'best.pt')  
-    model = ultralytics.YOLO(model_path)
+    model_path = os.path.join('/home', 'angelo', 'Documenti', 'GUV_detector', f'train_{args.modality}', f'train_{args.model_size}', 'weights', 'best.pt')  # Pretrained model path
+    model = ultralytics.YOLO(model_path)  # Load a custom model
 
     # model predint on the folder
     folder = os.path.join(args.folder, f'DATA_training_{args.modality}_txt')
