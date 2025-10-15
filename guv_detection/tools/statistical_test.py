@@ -23,12 +23,9 @@ if __name__ == "__main__":
 
     # model predint on the folder
     folder = os.path.join(args.folder, f'DATA_training_{args.modality}_txt', 'test', 'statistical_analysis')
-    print(os.listdir(folder))
 
     for acq in os.listdir(folder):
-        print(f"Processing acquisition: {acq}")
         acq_path = os.path.join(folder, acq)
-        print(os.listdir(acq_path))
         results = model.predict(source=os.path.join(acq_path, 'images'), save=True, save_txt=True, save_conf=True,
                                 project=acq_path)
         metrics = model.val(data=os.path.join(acq_path, 'data.yaml'),  
@@ -40,5 +37,7 @@ if __name__ == "__main__":
                             # iou=0.95,  # IoU threshold for evaluation
                         )
 
-        with open(os.path.join(acq_path, 'metrics.json'), 'w') as f:
-            yaml.dump(metrics.results_dict, f)
+        print(metrics.results_dict.keys())
+        with open(os.path.join(acq_path, f"metrics.txt"), "w") as f:
+            for key, value in metrics.results_dict.items():
+                f.write(f"{key}: {value}\n")
