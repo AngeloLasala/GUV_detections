@@ -58,6 +58,8 @@ def main(args):
         num_classes = 1
         names = ['GUV']
         yaml_content = {
+            'train': os.path.join(acq_folder, 'images'), # dummy path, not used
+            'val': os.path.join(acq_folder, 'images'),   # dummy path, not used 
             'test': os.path.join(acq_folder, 'images'),
             'nc': num_classes,
             'names': names 

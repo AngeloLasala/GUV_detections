@@ -20,9 +20,9 @@ if __name__ == "__main__":
 
     # model predint on the folder
     folder = os.path.join(args.folder, f'DATA_training_{args.modality}_txt')
-    test_path = os.path.join(folder, 'test', 'images')
-    results = model.predict(source=os.path.join(folder, 'test', 'images'), save=True, save_txt=True, save_conf=True,
-                            project=os.path.join(folder, 'test'))
+    # test_path = os.path.join(folder, 'test', 'images')
+    # results = model.predict(source=os.path.join(folder, 'test', 'images'), save=True, save_txt=True, save_conf=True,
+    #                         project=os.path.join(folder, 'test'))
 
     # model val on the test set
     metrics = model.val(data=os.path.join(folder, 'data.yaml'),  
@@ -33,7 +33,7 @@ if __name__ == "__main__":
                         # conf=0.25,  # Confidence threshold for predictions
                         # iou=0.95,  # IoU threshold for evaluation
                     )
-                        
+    print(metrics)
 
 
 
