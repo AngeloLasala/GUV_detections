@@ -52,6 +52,7 @@ def main(args):
         raise FileNotFoundError(f"Test folder not found in {path}")
 
     # check if the gray path exist, if not create it
+    data_split = args.folders
     if not os.path.exists(path_gray):
         os.makedirs(path_gray)
         os.makedirs(os.path.join(path_gray, 'train', 'images'))
@@ -62,10 +63,14 @@ def main(args):
         os.makedirs(os.path.join(path_gray, 'test', 'labels'))
     else: 
         print(f"Gray path {path_gray} already exists. Please remove it or choose another path.")
-        return None
+        for split in data_split:
+            images_path = os.path.join(path_gray, split, 'images')
+            labels_path = os.path.join(path_gray, split, 'labels')
+            if not os.path.exists(images_path) or not os.path.exists(labels_path):
+                print(f"Creating missing folders in {path_gray}...")
+                os.makedirs(images_path, exist_ok=True)
+                os.makedirs(labels_path, exist_ok=True)
 
-
-    data_split = args.folders
 
     dataset_info = {}
     for split in data_split:

@@ -28,12 +28,11 @@ if __name__ == "__main__":
     metrics = model.val(data=os.path.join(folder, 'data.yaml'),  
                         split="test",               
                         save_json=True,   
-                        project=os.path.join(folder, 'test'),
+                        project=os.path.join(folder, 'new_microscope'),
                         verbose=True,
                         # conf=0.25,  # Confidence threshold for predictions
                         # iou=0.95,  # IoU threshold for evaluation
                     )
-    print(metrics)
 
 
 
