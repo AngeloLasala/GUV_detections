@@ -21,14 +21,14 @@ if __name__ == "__main__":
     # model predint on the folder
     folder = os.path.join(args.folder, f'DATA_training_{args.modality}_txt')
     # test_path = os.path.join(folder, 'test', 'images')
-    # results = model.predict(source=os.path.join(folder, 'test', 'images'), save=True, save_txt=True, save_conf=True,
-    #                         project=os.path.join(folder, 'test'))
+    results = model.predict(source=os.path.join(folder, 'new_microscop', 'images'), save=True, save_txt=True, save_conf=True,
+                            project=os.path.join(folder, 'new_microscop'))
 
     # model val on the test set
     metrics = model.val(data=os.path.join(folder, 'data.yaml'),  
                         split="test",               
                         save_json=True,   
-                        project=os.path.join(folder, 'new_microscope'),
+                        project=os.path.join(folder, 'new_microscop'),
                         verbose=True,
                         # conf=0.25,  # Confidence threshold for predictions
                         # iou=0.95,  # IoU threshold for evaluation
