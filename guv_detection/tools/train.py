@@ -37,9 +37,9 @@ def train(model_size, modality, folder):
     """
 
     ## load model
-    model = YOLO("yolo11n.yaml")                      # build a new model from YAML
-    model = YOLO("yolo11n.pt")                        # load a pretrained model (recommended for training)
-    model = YOLO("yolo11n.yaml").load("yolo11n.pt")   # build from YAML and transfer weights
+    model = YOLO(f"yolo11{model_size}.yaml")                      # build a new model from YAML
+    model = YOLO(f"yolo11{model_size}.pt")                        # load a pretrained model (recommended for training)
+    model = YOLO(f"yolo11{model_size}.yaml").load(f"yolo11{model_size}.pt")   # build from YAML and transfer weights
     
     # folder
     train_folder = os.path.join(folder, f'DATA_training_{modality}_txt')
@@ -48,7 +48,7 @@ def train(model_size, modality, folder):
     results = model.train(data=os.path.join(train_folder, 'data.yaml'),  # path to data.yaml
                           epochs=100,               # number of epochs to train
                           imgsz=640,                # image size
-                          project=os.path.join(train_folder, 'train'),  # project name
+                          project=os.path.join(train_folder, f'training_{model_size}'),  # project name
                          )
 
 if __name__ == '__main__':
