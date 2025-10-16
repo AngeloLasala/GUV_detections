@@ -65,7 +65,7 @@ def main(args):
         return None
 
 
-    data_split = ['test', 'train', 'val']
+    data_split = args.folders
 
     dataset_info = {}
     for split in data_split:
@@ -95,8 +95,11 @@ def main(args):
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Read dataset from path')
-    parser.add_argument('--path', type=str, default="/media/angelo/OS/Users/lasal/OneDrive - Scuola Superiore Sant'Anna/PhD_notes/Liposomes detection/DATA_training_txt", help='Path to the dataset')
+    parser.add_argument('--path', type=str, default="/media/angelo/OS/Users/lasal/OneDrive - Scuola Superiore Sant'Anna/PhD_notes/Liposomes detection/DATA_training_rgb_txt", help='Path to the dataset')
     parser.add_argument('--path_gray', type=str, default="/media/angelo/OS/Users/lasal/OneDrive - Scuola Superiore Sant'Anna/PhD_notes/Liposomes detection/DATA_training_grey_txt", help='Path to the gray dataset')
+    parser.add_argument('--folders', type=str, nargs='+', default=['train', 'val', 'test'], help='Folders to process')
+
+
     args = parser.parse_args()
 
     main(args)
