@@ -102,17 +102,20 @@ def main(args):
         data_all = pd.concat(df_list, ignore_index=True)
 
         # Plot all in one figure
-        plt.figure(figsize=(10, 6), num=f'Violin Plots - Dataset with {len(grey_metrics_dict)} acquisitions')
-        sns.violinplot(
-            x='Metric', y='Value', hue='Model', data=data_all,
-            palette='Set2', split=False
-        )
-        sns.stripplot(
-            x='Metric', y='Value', hue='Model', data=data_all,
-            dodge=True, color='k', alpha=0.6, size=4
-    )
-        plt.title('Violin Plots of Metrics for Grey and RGB Models')
-        plt.ylabel('Metric Value')
+        plt.figure(figsize=(12, 6), num=f'Violin Plots - Dataset with {len(grey_metrics_dict)} acquisitions', tight_layout=True)
+        sns.violinplot(x='Metric', y='Value', hue='Model', data=data_all, palette='Set2', split=False)
+        sns.stripplot(x='Metric', y='Value', hue='Model', data=data_all, dodge=True, color='k', alpha=0.6, size=5)
+
+        plt.ylabel('Metric Value', fontsize=22)
+        plt.xlabel('', fontsize=22)
+        plt.xticks(fontsize=20)
+        plt.yticks(fontsize=20)
+        plt.ylim(0.2, 1.15)
+        plt.grid(linestyle='dotted')
+
+        handles, labels = plt.gca().get_legend_handles_labels()
+        plt.legend(handles[0:2], labels[0:2], fontsize=18, title='Model', title_fontsize=18, loc='lower left')
+
     plt.show()
 
         
