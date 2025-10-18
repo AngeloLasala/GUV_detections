@@ -115,9 +115,7 @@ def main(args):
         plt.ylabel('Metric Value')
     plt.show()
 
-  
-
-                
+        
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Statistical evaluation of different models")
