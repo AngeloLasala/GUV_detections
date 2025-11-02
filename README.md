@@ -74,4 +74,4 @@ At this stage, you can load the images and start the manual annotations.
 Here an example of label studio project for GUV manual annotation
 ![example of label-studio project](guv_detection/images/example_ls.png)
 
-Once the annotations are done, go to **Export** -> ***YOLO with Images* to get images and label ready to be use for training and/or testing Yolov11 model!!
+Once the annotations are done, go to **Export** -> **YOLO with Images** to get images and label ready to be use for training and/or testing Yolov11 model!!
