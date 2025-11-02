@@ -42,7 +42,7 @@ The inference phase is the stage during which the trained model is utilized for 
 
 For the sake of simplicity, in this project, we guide the  installation process using [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html) and the [ML backend interface](https://labelstud.io/guide/ml.html) .
 
-## Create the Liposomes_Detection project
+### Create the Liposomes_Detection project
 First of all create a virtul env where install the requirement packeges for Label-studio. For Anacondo/Miniconda env:
 ```bash
 conda create --name label-studio python=3.10
@@ -71,3 +71,7 @@ At this stage, you can load the images and start the manual annotations.
 
 **NOTE!!**: the Label studio interface runs on a localholst 8080 that must be activate during the usage. The suggestion is to open an *Anaconda prompt (Miniconda)* and lanch the above code without closing the windows.
 
+Here an example of label studio project for GUV manual annotation
+![example of label-studio project](guv_detection/images/example_ls.png)
+
+Once the annotations are done, go to **Export** -> ***YOLO with Images* to get images and label ready to be use for training and/or testing Yolov11 model!!
