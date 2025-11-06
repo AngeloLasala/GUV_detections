@@ -24,10 +24,6 @@ def read_image_label(image_path, label_path, show_plot=False):
     image = Image.open(image_path)
     W, H = image.size
 
-    # read the txt file line by line
-    parent_labels = os.path.dirname(os.path.dirname(label_path))
-    new_label_path = os.path.join(parent_labels, 'labels_new')
-    
     boxes = []
     with open(label_path, 'r') as file:
         for line in file:
@@ -93,7 +89,7 @@ def main(args):
     for split in data_split:
         split_info = {}
         images_path = os.path.join(path, split, 'images')
-        labels_path = os.path.join(path, split, 'labels')
+        labels_path = os.path.join(path, split, 'labels_original')
 
 
         for image in os.listdir(images_path):
@@ -101,7 +97,7 @@ def main(args):
             label_path = os.path.join(labels_path, image.replace('.jpg', '.txt'))
             if not os.path.exists(label_path):
                 continue
-            name, W, H, boxes = read_image_label(image_path, label_path, show_plot=False)
+            name, W, H, boxes = read_image_label(image_path, label_path, show_plot=args.show_plot)
             split_info[name] = {
                 'width': W,
                 'height': H,
@@ -153,7 +149,8 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Read dataset from path')
-    parser.add_argument('--path', type=str, default="/media/angelo/OS/Users/lasal/OneDrive - Scuola Superiore Sant'Anna/PhD_notes/Liposomes detection/DATA_training_txt", help='Path to the dataset')
+    parser.add_argument('--path', type=str, default="/media/angelo/OS/Users/lasal/OneDrive - Scuola Superiore Sant'Anna/PhD_notes/Liposomes detection/DATA_training_rgb_txt", help='Path to the dataset')
+    parser.add_argument('--show_plot', action='store_true', help="show img and bbox, default=False")
     args = parser.parse_args()
 
     main(args)
