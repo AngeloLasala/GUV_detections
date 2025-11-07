@@ -36,13 +36,16 @@ pip install -e .
 
 **!! Note !!**: The Ultralytics package automatically installs the necessary NVIDIA and CUDA dependencies required for GPU usage.
 
-## Label Studio Inteface - create a project
+## GUV Detector
+To do ...
 
-The inference phase is the stage during which the trained model is utilized for real-world applications. The detailed procedure to install Label-studio in a virtual envirorment is [here](https://labelstud.io/guide/install.html). 
+## Label Studio Inteface - Create GUV project
 
-For the sake of simplicity, in this project, we guide the  installation process using [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html) and the [ML backend interface](https://labelstud.io/guide/ml.html) .
+Label studio is an open source platform usefull for creating a userfrandly interface to laod an annotate dataset for diverse type of ML project. Here, we provide a simple guideline for creating a project releated to GUV detection
 
-### Create the Liposomes_Detection project
+For the sake of simplicity, in this project, we guide the  installation process using [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html)
+
+### Create the GUV Detection project
 First of all create a virtul env where install the requirement packeges for Label-studio. For Anacondo/Miniconda env:
 ```bash
 conda create --name label-studio python=3.10
@@ -75,3 +78,54 @@ Here an example of label studio project for GUV manual annotation
 ![example of label-studio project](guv_detection/images/example_ls.png)
 
 Once the annotations are done, go to **Export** -> **YOLO with Images** to get images and label ready to be use for training and/or testing Yolov11 model!!
+
+## Usage for custom training
+
+### Dataset
+The dataset used to train and validate the GUV Detector consists of microscopy images of GUVs, annotated by expert researchers in the field. The data is organized as follows:
+
+```
+| DATA
+|   |-- train
+|   |   |-- images
+|   |   |   |-- image_1.jpg
+|   |   |   |-- image_2.jpg
+|   |   |   |-- ...
+|   |   |-- label
+|   |   |   |-- image_1.txt
+|   |   |   |-- image_2.txt
+|   |   |   |-- ...
+|   |-- val
+|   |   |-- images
+|   |   |-- label
+|   |-- test
+|   |   |-- images
+|   |   |-- label
+```
+
+The current version of the project supports both .png and .jpg image formats.
+Each corresponding label.txt file must follow the Ultralytics YOLO annotation format. Please refer to the official Ultralytics documentation for detailed [annotation guidelines](https://docs.ultralytics.com/it/datasets/detect/#supported-dataset-formats) .
+
+To ensure compatibility and prevent errors, use the **Label Studio Interface – Create GUV Project** guide above to take full advantage of Label Studio for annotation!
+
+### Training
+
+Once the dataset is prepared, you can train your custom model using the `train.py` script.
+
+```bash
+python train.py --model --epoch --folder --modality
+```
+
+The dataset folder used for training must be organized as follows:
+```
+| folder
+|   |-- modality_1
+|   |   |-- DATA
+|   |-- modality_2
+|   |   |-- DATA
+```
+Each modality (e.g., `rgb`, `grey`) should contain its own DATA directory with the standard `train`, `val`, and `test` subfolders.
+
+### Test
+To do...
+
