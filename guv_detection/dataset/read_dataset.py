@@ -35,7 +35,7 @@ def read_image_label(image_path, label_path, show_plot=False):
                 width = float(parts[3])
                 height = float(parts[4])
                 boxes.append([class_id, x_center, y_center, width, height])
-
+ 
     if show_plot:
         fig, ax = plt.subplots(1, 1, figsize=(10, 10))
         ax.set_title(f"{name}", fontsize=22)
@@ -75,7 +75,7 @@ def main(args):
     """
     path = args.path
 
-    ##  check if 'train' 'val' 'test' folders are present
+    #  check if 'train' 'val' 'test' folders are present
     if not os.path.exists(os.path.join(path, 'train')):
         raise FileNotFoundError(f"Train folder not found in {path}")
     if not os.path.exists(os.path.join(path, 'val')):
@@ -89,8 +89,7 @@ def main(args):
     for split in data_split:
         split_info = {}
         images_path = os.path.join(path, split, 'images')
-        labels_path = os.path.join(path, split, 'labels_original')
-
+        labels_path = os.path.join(path, split, 'labels')
 
         for image in os.listdir(images_path):
             image_path = os.path.join(images_path, image)

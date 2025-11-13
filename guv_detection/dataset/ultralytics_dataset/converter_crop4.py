@@ -55,8 +55,6 @@ def convert_bbox_to_yolo_format(image_path, bboxes, multi_class=False):
     crop_width = img_width // 2
     crop_height = img_height // 2
 
-
-
     converted_bboxes_tl = []
     converted_bboxes_tr = []
     converted_bboxes_bl = []
@@ -69,24 +67,23 @@ def convert_bbox_to_yolo_format(image_path, bboxes, multi_class=False):
         if multi_class: label = bbox['label']
         else: label = 0
 
-        #x_center /= img_width
-        #y_center /= img_height
-        width /= img_width
-        height /= img_height
+        # x_center /= img_width
+        # y_center /= img_height
+        width /= crop_width
+        height /= crop_height
 
-        if (x_center <= crop_width) & (y_center>= crop_height) :
-            converted_bboxes_bl.append([label, x_center/img_width, (y_center-crop_height)/img_height, width, height])
-        elif (x_center >= crop_width) & (y_center>= crop_height):
-            converted_bboxes_br.append([label, (x_center-crop_width)/img_width, (y_center-crop_height)/img_height, width, height])
-        elif (x_center <= crop_width) & (y_center<= crop_height):
-            converted_bboxes_tl.append([label, x_center/img_width, y_center/img_height, width, height])
-        elif (x_center >= crop_width) & (y_center <= crop_height):
-            converted_bboxes_tr.append([label, (x_center-crop_width)/img_width, y_center/img_height, width, height])
+        if (x_center <= crop_width) and (y_center>= crop_height) :
+            converted_bboxes_bl.append([label, x_center/crop_width, (y_center-crop_height)/crop_height, width, height])
+        elif (x_center >= crop_width) and (y_center>= crop_height):
+            converted_bboxes_br.append([label, (x_center-crop_width)/crop_width, (y_center-crop_height)/crop_height, width, height])
+        elif (x_center <= crop_width) and (y_center<= crop_height):
+            converted_bboxes_tl.append([label, x_center/crop_width, y_center/crop_height, width, height])
+        elif (x_center >= crop_width) and (y_center <= crop_height):
+            converted_bboxes_tr.append([label, (x_center-crop_width)/crop_width, y_center/crop_height, width, height])
 
     return converted_bboxes_tl,converted_bboxes_tr,converted_bboxes_bl,converted_bboxes_br
     
-
-def plot_image_with_bboxes(image_path, bboxes,img_width,img_height): #no needed 
+def plot_image_with_bboxes(image_path, bboxes, img_width, img_height): #no needed 
     """
     Plot the image with bounding boxes.
     """
@@ -107,12 +104,11 @@ def plot_image_with_bboxes(image_path, bboxes,img_width,img_height): #no needed
         plt.gca().add_patch(cnt)
     plt.axis('off')
     plt.show()
-    
 def main(args):
     """
     Covert the annotation from Label Studio (in xml) to txt (used for YOLOv7 and YOLOv11).
     """
-    split_list = ["train", "val", "test"] 
+    split_list = ["test"] 
 
     ## create the output folder
     if not os.path.exists(args.output_path):
@@ -139,7 +135,6 @@ def main(args):
             ###############################################################################################################
             # put the cropped images in the 'images' folder of the output folder
             
-
             image = cv2.imread(img_path)
             
             # Get the dimensions of the image
@@ -162,9 +157,6 @@ def main(args):
             cv2.imwrite(os.path.join(os.path.join(args.output_path, split, "images"), f'{img_name}_bl.jpg'), bottom_left)
             cv2.imwrite(os.path.join(os.path.join(args.output_path, split, "images"), f'{img_name}_br.jpg'), bottom_right)
 
-
-
-
             ##################################################################################################################
 
             # read the xml file
@@ -176,15 +168,11 @@ def main(args):
             bboxes_txt_list=[bboxes_txt_tl, bboxes_txt_tr, bboxes_txt_bl, bboxes_txt_br]
             
            
-            
-            
-
             bboxes_txt_dict={'0':"_tl",'1':"_tr",'2':"_bl",'3':"_br"}
             # create the txt file
             for idx,bboxes_txt in enumerate(bboxes_txt_list):
                 txt_path = os.path.join(args.output_path, split, "labels", img_name + bboxes_txt_dict[str(idx)] + ".txt")
-                plot_image_with_bboxes(os.path.join(args.output_path, split, "images", img_name + bboxes_txt_dict[str(idx)] + ".jpg"), bboxes_txt,width,height)
-                
+                # plot_image_with_bboxes(os.path.join(args.output_path, split, "images", img_name + bboxes_txt_dict[str(idx)] + ".jpg"), bboxes_txt, crop_width, crop_height)
                 with open(txt_path, "w") as f:
                     for bbox in bboxes_txt:
                     # convert to string
