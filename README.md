@@ -91,16 +91,16 @@ The dataset used to train and validate the GUV Detector consists of microscopy i
 |   |   |   |-- image_1.jpg
 |   |   |   |-- image_2.jpg
 |   |   |   |-- ...
-|   |   |-- label
+|   |   |-- labels
 |   |   |   |-- image_1.txt
 |   |   |   |-- image_2.txt
 |   |   |   |-- ...
 |   |-- val
 |   |   |-- images
-|   |   |-- label
+|   |   |-- labels
 |   |-- test
 |   |   |-- images
-|   |   |-- label
+|   |   |-- labels
 ```
 
 The current version of the project supports both .png and .jpg image formats.
