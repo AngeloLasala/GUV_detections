@@ -67,8 +67,6 @@ def convert_bbox_to_yolo_format(image_path, bboxes, multi_class=False):
         if multi_class: label = bbox['label']
         else: label = 0
 
-        # x_center /= img_width
-        # y_center /= img_height
         width /= crop_width
         height /= crop_height
 
@@ -132,9 +130,9 @@ def main(args):
             
             img_path = os.path.join(split_path_i, 'images', img)
             annotation_path = os.path.join(split_path_i, "Annotations", img_name + ".xml") 
+
             ###############################################################################################################
             # put the cropped images in the 'images' folder of the output folder
-            
             image = cv2.imread(img_path)
             
             # Get the dimensions of the image
@@ -160,8 +158,7 @@ def main(args):
             ##################################################################################################################
 
             # read the xml file
-            bboxes = read_xml(annotation_path)#annotation path of the original images folder
-            #plot_image_with_bboxes(img_path, bboxes, img_width=args.original_image_width,img_height=args.original_image_height) # img_path = path of the images original images
+            bboxes = read_xml(annotation_path) #annotation path of the original images folder
             
             #save the coordinates of bounding boxes center to 4 different list to be written in 4 different .txt files 
             bboxes_txt_tl, bboxes_txt_tr, bboxes_txt_bl, bboxes_txt_br = convert_bbox_to_yolo_format(img_path, bboxes, multi_class=False)
