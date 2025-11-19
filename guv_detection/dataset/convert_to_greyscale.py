@@ -7,6 +7,7 @@ import argparse
 import numpy as np 
 import matplotlib.pyplot as plt
 from PIL import Image
+from tqdm import tqdm
 
 def read_image_label(image_path, label_path, show_plot=False):
     """
@@ -41,53 +42,53 @@ def main(args):
     -------
     """
     path = args.path
-    path_gray = args.path_gray
-
-    ##  check if 'train' 'val' 'test' folders are present
-    if not os.path.exists(os.path.join(path, 'train')):
-        raise FileNotFoundError(f"Train folder not found in {path}")
-    if not os.path.exists(os.path.join(path, 'val')):
-        raise FileNotFoundError(f"Validation folder not found in {path}")
-    if not os.path.exists(os.path.join(path, 'test')):
-        raise FileNotFoundError(f"Test folder not found in {path}")
-
-    # check if the gray path exist, if not create it
+    path_grey = args.path_grey
     data_split = args.folders
-    if not os.path.exists(path_gray):
-        os.makedirs(path_gray)
-        os.makedirs(os.path.join(path_gray, 'train', 'images'))
-        os.makedirs(os.path.join(path_gray, 'train', 'labels'))
-        os.makedirs(os.path.join(path_gray, 'val', 'images'))
-        os.makedirs(os.path.join(path_gray, 'val', 'labels'))
-        os.makedirs(os.path.join(path_gray, 'test', 'images'))
-        os.makedirs(os.path.join(path_gray, 'test', 'labels'))
-    else: 
-        print(f"Gray path {path_gray} already exists. Please remove it or choose another path.")
-        for split in data_split:
-            images_path = os.path.join(path_gray, split, 'images')
-            labels_path = os.path.join(path_gray, split, 'labels')
-            if not os.path.exists(images_path) or not os.path.exists(labels_path):
-                print(f"Creating missing folders in {path_gray}...")
-                os.makedirs(images_path, exist_ok=True)
-                os.makedirs(labels_path, exist_ok=True)
+
+    # Check the requested splits exist in the source path; skip those that don't
+    available_splits = []
+    for split in data_split:
+        split_images = os.path.join(path, split, 'images')
+        split_labels = os.path.join(path, split, 'labels')
+        if not os.path.exists(split_images):
+            print(f"[WARN] Source images folder not found for split '{split}': {split_images} -> skipping this split.")
+            continue
+        if not os.path.exists(split_labels):
+            print(f"[WARN] Source labels folder not found for split '{split}': {split_labels} -> skipping this split.")
+            continue
+        available_splits.append(split)
+
+    if not available_splits:
+        raise FileNotFoundError(f"No requested splits found under {path}. Requested splits: {data_split}")
+
+    # create grey dataset folder structure only for the available splits
+    for split in available_splits:
+        images_out = os.path.join(path_grey, split, 'images')
+        labels_out = os.path.join(path_grey, split, 'labels')
+        os.makedirs(images_out, exist_ok=True)
+        os.makedirs(labels_out, exist_ok=True)
 
 
     dataset_info = {}
-    for split in data_split:
+    for split in available_splits:
         print('Processing split:', split)
         split_info = {}
         images_path = os.path.join(path, split, 'images')
         labels_path = os.path.join(path, split, 'labels')
 
-        for image in os.listdir(images_path):
-            image_path = os.path.join(images_path, image)
+        for image in tqdm(os.listdir(images_path)):
+            # chek if image end with .jpd or .png
+            if image.lower().endswith(('.jpg', '.jpeg', '.png')):
+                image_path = os.path.join(images_path, image)
+            else:
+                pass
             label_path = os.path.join(labels_path, image.replace('.jpg', '.txt'))
 
             image_gray = Image.open(image_path).convert('L')
-            image_gray.save(os.path.join(path_gray, split, 'images', image))
+            image_gray.save(os.path.join(path_grey, split, 'images', image))
 
             # copy the label file to the new path
-            new_label_path = os.path.join(path_gray, split, 'labels', image.replace('.jpg', '.txt'))
+            new_label_path = os.path.join(path_grey, split, 'labels', image.replace('.jpg', '.txt'))
             if os.path.exists(label_path):
                 with open(label_path, 'r') as f:
                     lines = f.readlines()
@@ -101,7 +102,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Read dataset from path')
     parser.add_argument('--path', type=str, default="/media/angelo/OS/Users/lasal/OneDrive - Scuola Superiore Sant'Anna/PhD_notes/Liposomes detection/DATA_training_rgb_txt", help='Path to the dataset')
-    parser.add_argument('--path_gray', type=str, default="/media/angelo/OS/Users/lasal/OneDrive - Scuola Superiore Sant'Anna/PhD_notes/Liposomes detection/DATA_training_grey_txt", help='Path to the gray dataset')
+    parser.add_argument('--path_grey', type=str, default="/media/angelo/OS/Users/lasal/OneDrive - Scuola Superiore Sant'Anna/PhD_notes/Liposomes detection/DATA_training_grey_txt", help='Path to the gray dataset')
     parser.add_argument('--folders', type=str, nargs='+', default=['train', 'val', 'test'], help='Folders to process')
 
     args = parser.parse_args()
