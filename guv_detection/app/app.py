@@ -65,7 +65,6 @@ class CalibrationWindow:
         self.photo = ImageTk.PhotoImage(self.display_image)
         self.canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
         self.canvas.bind("<Button-1>", self.on_click)
-
         self.info_label = ttk.Label(self.top, text="Click FIRST point...", font=('Helvetica', 11), foreground='blue')
         self.info_label.pack(pady=4)
 
