@@ -1,5 +1,5 @@
 """
-Compute the advanced statistic evaluation about the effect of cutting
+Compute the advanced statistic evaluation about the effect of cropping the image in 4x4 sub_img
 - edges detection
 - effect on the size distribuction
 """
