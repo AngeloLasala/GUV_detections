@@ -58,6 +58,7 @@ def crop_images(input_folder, num_crops):
 
 
 def main(args):
+    
     crop_images(args.input_folder, args.num_crops)
 
 
