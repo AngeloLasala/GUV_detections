@@ -107,7 +107,24 @@ Then lunch label-studio:
 label-studio
 ```
 
-Open the project (see *Label Studio Interface - Create GUV procet* for details), and follow this guideline for setting the local file envirormnet:
+Open the project (see *Label Studio Interface - Create GUV procet* for details), and follow this guideline for setting the local file envirormnet for [Settupping connection in Label Studio UI](https://labelstud.io/guide/storage#Set-up-connection-in-the-Label-Studio-UI-4)
+
+- Open **Setting > Cloude Storage**
+- Click **Add Source Storage**
+- Select **Local Files** as the storage type
+- Insert a name for your storage title: example Leica Angelo
+- Specify an **Absolute local path** to the directory with your files. For the tree configuration above insert  `document_root/folder_path`. Then **Verified connect** and click **Next**
+- *(Optional)* In the File Filter Regex field, specify a regular expression to filter bucket objects. Use .* to collect all objects.
+- *(Optional)* In the Import method dropdown, choose how to import your data:
+    - Files - Automatically creates a task for each storage object (e.g. JPG, MP3, TXT). Use this if you want to create Label Studio tasks from media files automatically. Use this option for labeling configurations with one source tag.
+    - Tasks - Treat each JSON, JSONL, or Parquet as a task definition (one or more tasks per file). Use this if you want to import tasks in Label Studio JSON format directly from your storage. Use this option for complex labeling configurations with HyperText or multiple source tags.
+- Click **Next**
+- Finally click **Save**. **DO NOT** save and sync
+
+Here an example of storage information
+![example of label-studio storage informatio](guv_detection/images/local_file_storage.png)
+
+
 
 
 
