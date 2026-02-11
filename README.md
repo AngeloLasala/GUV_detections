@@ -81,10 +81,10 @@ Once the annotations are done, go to **Export** -> **YOLO with Images** to get i
 
 ### Import Images and Pre-annotation with JSON file
 
-A uselfull way to import data in the label studio project is via JSON file. Here, a guideline to import your data, and eventually pre-annotations/annotations, by building a single JSON file. 
+This guide explains how to import images and pre-annotated data into a Label Studio project using a JSON file. This approach allows you to create tasks efficiently and optionally include pre-annotations.
 For details about the JSON format and the preannotation see [Basic Label studio JSON format](https://labelstud.io/guide/tasks#Basic-Label-Studio-JSON-format) and [Import pre-annotated data into Label Studio](https://labelstud.io/guide/predictions)
 
-Before open the label-studio project, you have to lunch wiht the permission to access a local path. the configuration of local file must be as follow:
+Before open the label-studio project, you have to lunch wiht the permission to access a local path. Organize your files in a structured directory:
 
 ```
 | document_root
@@ -94,20 +94,20 @@ Before open the label-studio project, you have to lunch wiht the permission to a
 |   |   |-- image_n.jpg
 ```
 
-Set the correct envirorment configuration to have axcess to the local file
+To allow Label Studio to access local files, set the following environment variables:
 
 ```bash
 export LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
 export LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=document_root
 ```
 
-Then lunch label-studio:
+Then, start label-studio:
 
 ```bash
 label-studio
 ```
 
-Open the project (see *Label Studio Interface - Create GUV procet* for details), and follow this guideline for setting the local file envirormnet for [Settupping connection in Label Studio UI](https://labelstud.io/guide/storage#Set-up-connection-in-the-Label-Studio-UI-4)
+Open the project (see *Label Studio Interface - Create GUV procet* for details), and follow this guideline for setting the local file envirormnet for [Setuping connection in Label Studio UI](https://labelstud.io/guide/storage#Set-up-connection-in-the-Label-Studio-UI-4)
 
 - Open **Setting > Cloude Storage**
 - Click **Add Source Storage**
@@ -121,16 +121,16 @@ Open the project (see *Label Studio Interface - Create GUV procet* for details),
 - Click **Next**
 - Finally click **Save**. **DO NOT** save and sync
 
-Here an example of storage information
+Example of storage setup in Label Studio:
 ![example of label-studio storage informatio](guv_detection/images/local_file_storage.png)
 Again, **do not click on sync** in this phase.
 
 - Go to the **Project > Import**
-- Inport a file  `import.json`
+- Import a file  `import.json`
 
+### How to create `import.json` file - Pre-annotation
 
-
-
+For obtaing pre-annotations, use a trained model that returns the bounding box of GUVs. For details about the training see [this section](#Training)
 
 
 ## Usage for custom training
