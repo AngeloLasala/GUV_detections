@@ -79,6 +79,40 @@ Here an example of label studio project for GUV manual annotation
 
 Once the annotations are done, go to **Export** -> **YOLO with Images** to get images and label ready to be use for training and/or testing Yolov11 model!!
 
+### Import Images and Pre-annotation with JSON file
+
+A uselfull way to import data in the label studio project is via JSON file. Here, a guideline to import your data, and eventually pre-annotations/annotations, by building a single JSON file. 
+For details about the JSON format and the preannotation see [Basic Label studio JSON format](https://labelstud.io/guide/tasks#Basic-Label-Studio-JSON-format) and [Import pre-annotated data into Label Studio](https://labelstud.io/guide/predictions)
+
+Before open the label-studio priject, you have to lunch wiht the permission to access a local path. the configuration of local file must be as follow:
+
+```
+| document_root
+|   |-- folder_path
+|   |   |-- image_1.jpg
+|   |   |-- image_2.jpg
+|   |   |-- image_n.jpg
+```
+
+Set the correct envirorment configuration to have axcess to the local file
+
+```bash
+export LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
+export LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=document_root
+```
+
+Then lunch label-studio:
+
+```bash
+label-studio
+```
+
+Open the project (see *Label Studio Interface - Create GUV procet* for details), and follow this guideline for setting the local file envirormnet:
+
+
+
+
+
 ## Usage for custom training
 
 ### Dataset
