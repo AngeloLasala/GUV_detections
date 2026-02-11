@@ -14,6 +14,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from scipy.stats import lognorm
 import numpy as np
+import csv
+import json
 
 def resource_path(relative_path):
     if hasattr(sys, "_MEIPASS"):
@@ -164,7 +166,7 @@ class GUVDetectorGUI:
         self.model_size = tk.StringVar(value="n")
         self.modality = tk.StringVar(value="grey")
         self.split_factor = tk.IntVar(value=2)
-        self.mu_per_pixel = tk.DoubleVar(value=0.3339)
+        self.mu_per_pixel = tk.DoubleVar(value=0.339)
         self.conf_thresh = tk.DoubleVar(value=0.25)
         self.use_interactive_calibration = tk.BooleanVar(value=True)
 
@@ -198,7 +200,7 @@ class GUVDetectorGUI:
         ttk.Label(main, text="Conf threshold:", font=('Helvetica', 12)).grid(row=5, column=0, sticky=tk.W)
         ttk.Entry(main, textvariable=self.conf_thresh, width=10).grid(row=5, column=1, sticky=tk.W)
 
-        ttk.Label(main, text="μm", font=('Helvetica', 12)).grid(row=6, column=0, sticky=tk.W)
+        ttk.Label(main, text="μm/pixel", font=('Helvetica', 12)).grid(row=6, column=0, sticky=tk.W)
         ttk.Entry(main, textvariable=self.mu_per_pixel, width=10).grid(row=6, column=1, sticky=tk.W)
 
         ttk.Checkbutton(main, text="Interactive calibration per image", variable=self.use_interactive_calibration).grid(row=7, column=1, sticky=tk.W, pady=4)
@@ -290,6 +292,100 @@ class GUVDetectorGUI:
         # start worker thread
         t = threading.Thread(target=self._worker_run, daemon=True)
         t.start()
+
+    def read_pred_boxes(self, pred_path):
+        """Read predicted boxes with confidence filtering."""
+        boxes = []
+        if os.path.exists(pred_path):
+            with open(pred_path) as f:
+                for line in f:
+                    parts = line.strip().split()
+                    if len(parts) >= 6:
+                        cls, xc, yc, w, h, conf = map(float, parts[:6])
+                        if conf >= float(self.conf_thresh.get()):
+                            boxes.append([xc, yc, w, h, conf])
+        return boxes
+
+    def create_json(self, folder_path):
+        """
+        Create json file for each images in the folder_path
+        """
+        document_root = os.path.dirname(folder_path)
+        folder_path = os.path.basename(folder_path)
+
+        valid_ext = (".png", ".jpg", ".jpeg", ".bmp", ".tiff")
+        images = [f for f in os.listdir(os.path.join(document_root, folder_path)) if f.lower().endswith(valid_ext)]
+        
+        if not images:
+            print("Not images found in the folder.")
+            return
+        
+        json_list = []
+        for img_name in images:   ## this is the for loop for task, i.e. for each images
+            abs_path = os.path.join(folder_path, img_name)
+            ls_path = f"/data/local-files/?d={abs_path}"
+            
+            json_data = {
+                "data": {
+                    "image": ls_path
+                },
+                "annotations": [],
+                "predictions": []
+            }
+
+            ## ADD PREANNOTATION
+            total_path = os.path.join(document_root, folder_path)
+            labels = os.path.join(total_path, "predict", "labels")
+
+            image_path = os.path.join(document_root, folder_path, img_name)
+            W, H = Image.open(image_path).size
+
+            if os.path.exists(labels):
+                result = []
+                img_name = os.path.splitext(img_name)[0]
+                preannotation_path = os.path.join(labels, img_name + ".txt")
+                boxes = self.read_pred_boxes(preannotation_path)
+
+                for bbox in boxes:
+                    xc, yc, w, h, c = bbox
+                    x1 = xc - w / 2
+                    y1 = yc - h / 2
+                    
+                    result.append({
+                        "original_width": W,
+                        "original_height": H,
+                        "image_rotation": 0,
+                        "value": {
+                            "x": x1 * 100,
+                            "y": y1 * 100,
+                            "width": w * 100,
+                            "height": h * 100,
+                            'rotation': 0, 
+                            'rectanglelabels': ['Empty_GUV']
+                        },
+                        "from_name": "label",
+                        "to_name": "image",
+                        'type': 'rectanglelabels', 
+                        'origin': 'manual'
+                    })
+                
+                prediction = []
+                prediction.append({
+                    'result': result})
+
+                json_data["predictions"] = prediction
+            else:
+                print(f"No preannotation found for {img_name}")
+            
+            json_list.append(json_data)
+
+        ## save json list as json file
+        json_file_path = os.path.join(document_root, folder_path, "import.json")
+        with open(json_file_path, "w") as json_file:
+            json.dump(json_list, json_file, indent=4)
+
+        return document_root, folder_path
+
 
     def _worker_run(self):
         try:
@@ -534,6 +630,23 @@ class GUVDetectorGUI:
             plot_path = os.path.join(sub_folder, 'GUV_size_distribution.pdf')
             fig.savefig(plot_path, dpi=300, bbox_inches='tight')
             self.root.after(0, lambda: self._show_plot(fig))
+
+            # === SAVE CSV FILE WITH GUV DIMENSIONS ===
+            csv_path = os.path.join(sub_folder, "GUV_dimensions.csv")
+            with open(csv_path, mode='w', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                # Header
+                writer.writerow(["GUV_ID", "Diameter_um"])
+                # Data
+                for idx, diameter in enumerate(dim_list, start=1):
+                    writer.writerow([idx, f"{diameter:.4f}"])
+
+            ## create json file
+            document_root, folder_apth = self.create_json(sub_folder)
+
+            self.append_result(f"\nPre-annotation informatio, for Label Studio set up")
+            self.append_result(f"Document root: {document_root}")
+            self.append_result(f"Folder path: {folder_apth}")
 
             # textual results
             self.append_result("\n=== RESULTS ===")

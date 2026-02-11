@@ -36,8 +36,28 @@ pip install -e .
 
 **!! Note !!**: The Ultralytics package automatically installs the necessary NVIDIA and CUDA dependencies required for GPU usage.
 
-## GUV Detector
-To do ...
+## GUV Detector - Create App
+
+## GUV Detector – Create the Desktop App
+
+To build your local **GUV Detector App**, first make sure the repository is correctly installed (see the Installation section).
+
+After installation, copy your trained model file `best.pth` into the appropriate folder:
+
+- If the model was trained on **grayscale images**, place it in:
+  `app/model/grey/`
+
+- If the model was trained on **RGB images**, place it in:
+  `app/model/rgb/`
+
+Then, from the root directory of the project, run:
+
+```bash
+python build_app.py
+```
+
+Once the build process is completed, the executable file **GUV_Detector.exe** will be created inside the `dist/` folder.
+You can copy the .exe file to your desktop (or any preferred location), double-click it, and start using the app.😄
 
 ## Label Studio Inteface - Create GUV project
 
@@ -98,7 +118,7 @@ To allow Label Studio to access local files, set the following environment varia
 
 ```bash
 export LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
-export LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=document_root
+export LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT="document_root"
 ```
 
 Then, start label-studio:
@@ -107,13 +127,13 @@ Then, start label-studio:
 label-studio
 ```
 
-Open the project (see *Label Studio Interface - Create GUV procet* for details), and follow this guideline for setting the local file envirormnet for [Setuping connection in Label Studio UI](https://labelstud.io/guide/storage#Set-up-connection-in-the-Label-Studio-UI-4)
+Open the project, and follow this guideline for setting the local file envirormnet for [Setuping connection in Label Studio UI](https://labelstud.io/guide/storage#Set-up-connection-in-the-Label-Studio-UI-4)
 
 - Open **Setting > Cloude Storage**
 - Click **Add Source Storage**
 - Select **Local Files** as the storage type
 - Insert a name for your storage title: example Leica Angelo
-- Specify an **Absolute local path** to the directory with your files. For the tree configuration above insert  `document_root/folder_path`. Then **Verified connect** and click **Next**
+- Specify an **Absolute local path** to the directory with your files. For the tree configuration above insert  `document_root/folder_path`. Then **Text Connection** and click **Next**
 - *(Optional)* In the File Filter Regex field, specify a regular expression to filter bucket objects. Use .* to collect all objects.
 - *(Optional)* In the Import method dropdown, choose how to import your data:
     - Files - Automatically creates a task for each storage object (e.g. JPG, MP3, TXT). Use this if you want to create Label Studio tasks from media files automatically. Use this option for labeling configurations with one source tag.
@@ -130,7 +150,17 @@ Again, **do not click on sync** in this phase.
 
 ### How to create `import.json` file - Pre-annotation
 
-For obtaing pre-annotations, use a trained model that returns the bounding box of GUVs. For details about the training see [this section](#Training)
+For obtaing pre-annotations, use a trained model that returns the bounding box of GUVs. For details about the training see [this section](#Training). Run the following code:
+
+```bash
+python inference.py --model "path:to_model_weight.pth" --folder "document_root/folder_path"
+```
+
+It creates `predict\labels` with file `image_1.txt` that cointains predicted bounding boxes. The, you can generate `import.json` with the following command
+
+```bash
+python create_json.py --document_root document_root --folder_path folder_path
+```
 
 
 ## Usage for custom training
@@ -179,7 +209,3 @@ The dataset folder used for training must be organized as follows:
 |   |   |-- DATA
 ```
 Each modality (e.g., `rgb`, `grey`) should contain its own DATA directory with the standard `train`, `val`, and `test` subfolders.
-
-### Test
-To do...
-
