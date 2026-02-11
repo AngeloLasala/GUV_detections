@@ -84,7 +84,7 @@ Once the annotations are done, go to **Export** -> **YOLO with Images** to get i
 A uselfull way to import data in the label studio project is via JSON file. Here, a guideline to import your data, and eventually pre-annotations/annotations, by building a single JSON file. 
 For details about the JSON format and the preannotation see [Basic Label studio JSON format](https://labelstud.io/guide/tasks#Basic-Label-Studio-JSON-format) and [Import pre-annotated data into Label Studio](https://labelstud.io/guide/predictions)
 
-Before open the label-studio priject, you have to lunch wiht the permission to access a local path. the configuration of local file must be as follow:
+Before open the label-studio project, you have to lunch wiht the permission to access a local path. the configuration of local file must be as follow:
 
 ```
 | document_root
@@ -123,7 +123,10 @@ Open the project (see *Label Studio Interface - Create GUV procet* for details),
 
 Here an example of storage information
 ![example of label-studio storage informatio](guv_detection/images/local_file_storage.png)
+Again, **do not click on sync** in this phase.
 
+- Go to the **Project > Import**
+- Inport a file  `import.json`
 
 
 

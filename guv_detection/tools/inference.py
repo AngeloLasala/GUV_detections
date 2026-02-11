@@ -102,7 +102,7 @@ if __name__=='__main__':
                                              help="Path to the model file")
     parser.add_argument("--folder", type=str, default="/media/angelo/OS/Users/lasal/OneDrive - Scuola Superiore Sant'Anna/PhD_notes/Liposomes detection/DATA_training_txt/inference", 
                         help="Path to the folder containing images")
-    parser.add_argument("--mu_per_pixel", type=float, default=0.3339, help="Conversion factor from pixels to micrometers")
+    parser.add_argument("--mu_per_pixel", type=float, default=0.339, help="Conversion factor from pixels to micrometers")
     parser.add_argument("--conf_thresh", type=float, default=0.25, help="Confidence threshold for predictions")
     args = parser.parse_args()
 
