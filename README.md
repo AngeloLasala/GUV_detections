@@ -36,8 +36,6 @@ pip install -e .
 
 **!! Note !!**: The Ultralytics package automatically installs the necessary NVIDIA and CUDA dependencies required for GPU usage.
 
-## GUV Detector - Create App
-
 ## GUV Detector – Create the Desktop App
 
 To build your local **GUV Detector App**, first make sure the repository is correctly installed (see the Installation section).
