@@ -118,6 +118,7 @@ To allow Label Studio to access local files, set the following environment varia
 export LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
 export LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT="document_root"
 ```
+For **Windows users**, use the command  `set` instead of `export` for setting the above variables.
 
 Then, start label-studio:
 
