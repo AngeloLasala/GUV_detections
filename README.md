@@ -7,7 +7,7 @@ This project implements an object detection pipeline using the YOLOv11 algorithm
 
 Check out the [YOLOv11 by Ultralytics](https://docs.ultralytics.com/it/models/yolo11/) for more detailed information about object detection model.
 
-## Install
+## 📥 Install
 Installation guideline is based on the Anaconda/Miniconda environment. To install Miniconda, refer to the [official documentation](https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html).
 
 
@@ -57,7 +57,7 @@ python build_app.py
 Once the build process is completed, the executable file **GUV_Detector.exe** will be created inside the `dist/` folder.
 You can copy the .exe file to your desktop (or any preferred location), double-click it, and start using the app.😄
 
-## Label Studio Inteface - Create GUV project
+## 🏷️ Label Studio Inteface - Create GUV project
 
 Label studio is an open source platform usefull for creating a userfrandly interface to laod an annotate dataset for diverse type of ML project. Here, we provide a simple guideline for creating a project releated to GUV detection
 
@@ -162,7 +162,7 @@ python create_json.py --document_root document_root --folder_path folder_path
 ```
 📱 For **GUV Detector app users**, the `import.json` file is automatically created during inference phase
 
-## Usage for custom training
+## ⚙️ Usage for custom training
 
 ### Dataset
 The dataset used to train and validate the GUV Detector consists of microscopy images of GUVs, annotated by expert researchers in the field. The data is organized as follows:
