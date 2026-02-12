@@ -36,7 +36,7 @@ pip install -e .
 
 **!! Note !!**: The Ultralytics package automatically installs the necessary NVIDIA and CUDA dependencies required for GPU usage.
 
-## GUV Detector – Create the Desktop App
+## 📱 GUV Detector – Create the Desktop App
 
 To build your local **GUV Detector App**, first make sure the repository is correctly installed (see the Installation section).
 
@@ -142,7 +142,7 @@ Open the project, and follow this guideline for setting the local file envirormn
 
 Example of storage setup in Label Studio:
 ![example of label-studio storage informatio](guv_detection/images/local_file_storage.png)
-Again, **do not click on sync** in this phase.
+Again, **DO NOT click** on **Sync Storage** in this phase. For **Windows users**, use the correct symbol (`\`) for concatenating paths
 
 - Go to the **Project > Import**
 - Import a file  `import.json`
@@ -160,7 +160,7 @@ It creates `predict\labels` with file `image_1.txt` that cointains predicted bou
 ```bash
 python create_json.py --document_root document_root --folder_path folder_path
 ```
-
+📱 For **GUV Detector app users**, the `import.json` file is automatically created during inference phase
 
 ## Usage for custom training
 
