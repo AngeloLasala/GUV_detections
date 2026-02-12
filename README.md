@@ -78,7 +78,7 @@ conda activate label-studio
 label-studio
 ```
 
-Create an object detection progect following the label-studio interface. The code view for pure object detection (*exp_1*) is:
+Create an object detection progect following the label-studio interface. Select **Object Detection with Bounding Boxes** project. The **code view** for object detection is:
 ```
 <View>
   <Image name="image" value="$image"/>
