@@ -7,7 +7,7 @@ This project implements an object detection pipeline using the YOLOv11 algorithm
 
 Check out the [YOLOv11 by Ultralytics](https://docs.ultralytics.com/it/models/yolo11/) for more detailed information about object detection model.
 
-## Install
+## 📥 Install
 Installation guideline is based on the Anaconda/Miniconda environment. To install Miniconda, refer to the [official documentation](https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html).
 
 
@@ -36,7 +36,7 @@ pip install -e .
 
 **!! Note !!**: The Ultralytics package automatically installs the necessary NVIDIA and CUDA dependencies required for GPU usage.
 
-## GUV Detector – Create the Desktop App
+## 📱 GUV Detector – Create the Desktop App
 
 To build your local **GUV Detector App**, first make sure the repository is correctly installed (see the Installation section).
 
@@ -57,7 +57,7 @@ python build_app.py
 Once the build process is completed, the executable file **GUV_Detector.exe** will be created inside the `dist/` folder.
 You can copy the .exe file to your desktop (or any preferred location), double-click it, and start using the app.😄
 
-## Label Studio Inteface - Create GUV project
+## 🏷️ Label Studio Inteface - Create GUV project
 
 Label studio is an open source platform usefull for creating a userfrandly interface to laod an annotate dataset for diverse type of ML project. Here, we provide a simple guideline for creating a project releated to GUV detection
 
@@ -78,7 +78,7 @@ conda activate label-studio
 label-studio
 ```
 
-Create an object detection progect following the label-studio interface. The code view for pure object detection (*exp_1*) is:
+Create an object detection progect following the label-studio interface. Select **Object Detection with Bounding Boxes** project. The **code view** for object detection is:
 ```
 <View>
   <Image name="image" value="$image"/>
@@ -118,6 +118,7 @@ To allow Label Studio to access local files, set the following environment varia
 export LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
 export LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT="document_root"
 ```
+For **Windows users**, use the command  `set` in **Command Prompt** terminal instead of `export` for setting the above variables.
 
 Then, start label-studio:
 
@@ -141,7 +142,7 @@ Open the project, and follow this guideline for setting the local file envirormn
 
 Example of storage setup in Label Studio:
 ![example of label-studio storage informatio](guv_detection/images/local_file_storage.png)
-Again, **do not click on sync** in this phase.
+Again, **DO NOT click** on **Sync Storage** in this phase. For **Windows users**, use the correct symbol (`\`) for concatenating paths
 
 - Go to the **Project > Import**
 - Import a file  `import.json`
@@ -159,9 +160,9 @@ It creates `predict\labels` with file `image_1.txt` that cointains predicted bou
 ```bash
 python create_json.py --document_root document_root --folder_path folder_path
 ```
+📱 For **GUV Detector app users**, the `import.json` file is automatically created during inference phase
 
-
-## Usage for custom training
+## ⚙️ Usage for custom training
 
 ### Dataset
 The dataset used to train and validate the GUV Detector consists of microscopy images of GUVs, annotated by expert researchers in the field. The data is organized as follows:
