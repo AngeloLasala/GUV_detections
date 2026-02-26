@@ -422,15 +422,23 @@ class GUVDetectorGUI:
             # calibration (synchronous, modal windows)
             if self.use_interactive_calibration.get():
                 self.append_result("\n=== CALIBRATION PHASE ===")
-                for idx, img_name in enumerate(valid_files, start=1):
-                    self.set_status(f"Calibrating image {idx}/{len(valid_files)}: {img_name}")
-                    img_path = os.path.join(folder, img_name)
-                    calib = CalibrationWindow(self.root, img_path, img_name, self.mu_per_pixel).get_calibration()
-                    if calib is None:
-                        # user cancelled -> abort
-                        raise RuntimeError("Calibration cancelled by user.")
+    
+                # Using only one image and propagate the calibration on all the images
+                first_image = valid_files[0]
+                self.set_status(f"Calibrating (global) using: {first_image}")
+
+                img_path = os.path.join(folder, first_image)
+                calib = CalibrationWindow(self.root, img_path, first_image, self.mu_per_pixel).get_calibration()
+
+                if calib is None:
+                    # user cancelled -> abort
+                    raise RuntimeError("Calibration cancelled by user.")
+
+                for img_name in valid_files:
                     self.calibration_data[img_name] = calib
-                    self.append_result(f"  {img_name}: {calib:.4f} μm/pixel")
+
+                self.append_result(f"Global calibration: {calib:.4f} μm/pixel applied to all images.")
+
             else:
                 default_mu = self.mu_per_pixel.get()
                 for img_name in valid_files:
