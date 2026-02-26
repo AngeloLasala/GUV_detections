@@ -380,7 +380,7 @@ class GUVDetectorGUI:
             json_list.append(json_data)
 
         ## save json list as json file
-        json_file_path = os.path.join(document_root, folder_path, "import.json")
+        json_file_path = os.path.join(document_root, folder_path, f"{self.current_folder_name}.json")
         with open(json_file_path, "w") as json_file:
             json.dump(json_list, json_file, indent=4)
 
@@ -391,6 +391,7 @@ class GUVDetectorGUI:
         try:
             self.set_status("Collecting images...")
             folder = self.folder_path.get()
+            self.current_folder_name = os.path.basename(os.path.normpath(folder))
             files = sorted([f for f in os.listdir(folder) if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
             if not files:
                 raise RuntimeError("No image files found in folder.")
@@ -635,12 +636,12 @@ class GUVDetectorGUI:
             ax.grid(linestyle=':')
 
             # save and show
-            plot_path = os.path.join(sub_folder, 'GUV_size_distribution.pdf')
+            plot_path = os.path.join(sub_folder, f'{self.current_folder_name}.pdf')
             fig.savefig(plot_path, dpi=300, bbox_inches='tight')
             self.root.after(0, lambda: self._show_plot(fig))
 
             # === SAVE CSV FILE WITH GUV DIMENSIONS ===
-            csv_path = os.path.join(sub_folder, "GUV_dimensions.csv")
+            csv_path = os.path.join(sub_folder, f"{self.current_folder_name}.csv")
             with open(csv_path, mode='w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 # Header
