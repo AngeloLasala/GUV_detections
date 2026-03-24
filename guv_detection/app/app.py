@@ -3,11 +3,13 @@ GUV Detector - Graphical User Interface (cleaned)
 Interactive per-image calibration; processing starts only after calibration.
 
 Batch mode: if the selected folder contains valid subfolders (excluding
-previously generated 'processing_images*' folders), ALL images from ALL
-subfolders are pooled into a single processing_images folder under the
-root folder, and inference is run once on the full pool.
-Calibration is performed on the first image of the first subfolder and
-applied to every image.
+previously generated 'processing_images*' folders):
+  1. ALL images from ALL subfolders are pooled into a single processing_images
+     folder under the root folder → one global inference run + global outputs.
+  2. EACH subfolder is also processed independently → its own processing_images
+     folder, CSV, PDF, JSON saved inside that subfolder.
+Calibration is performed once (first image of first subfolder) and reused
+for both the global run and all individual subfolder runs.
 """
 import os
 import math
@@ -65,7 +67,8 @@ class CalibrationWindow:
         max_display = 800
         if max(self.display_image.size) > max_display:
             ratio = max_display / max(self.display_image.size)
-            new_size = (int(self.display_image.size[0] * ratio), int(self.display_image.size[1] * ratio))
+            new_size = (int(self.display_image.size[0] * ratio),
+                        int(self.display_image.size[1] * ratio))
             self.display_image = self.display_image.resize(new_size, Image.LANCZOS)
             self.scale_factor = ratio
         else:
@@ -103,7 +106,8 @@ class CalibrationWindow:
         ttk.Button(btn_frame, text="Reset Points", command=self.reset_points).pack(side=tk.LEFT, padx=4)
         ttk.Button(btn_frame, text=f"Skip (use default {self.default_mu.get()})",
                    command=self.skip_calibration).pack(side=tk.LEFT, padx=4)
-        ttk.Button(btn_frame, text="Calculate", command=self.calculate_calibration).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_frame, text="Calculate",
+                   command=self.calculate_calibration).pack(side=tk.LEFT, padx=4)
 
         self.done_button = ttk.Button(btn_frame, text="DONE", command=self.confirm_calibration)
         self.done_button.pack(side=tk.RIGHT)
@@ -116,7 +120,8 @@ class CalibrationWindow:
         x, y = event.x, event.y
         self.points.append((x, y))
         r = 4
-        self.canvas.create_oval(x-r, y-r, x+r, y+r, fill='red', outline='yellow', width=2, tags='cal')
+        self.canvas.create_oval(x-r, y-r, x+r, y+r,
+                                fill='red', outline='yellow', width=2, tags='cal')
         self.canvas.create_text(x, y-14, text=f"P{len(self.points)}", fill='yellow',
                                 font=('Helvetica', 10, 'bold'), tags='cal')
         if len(self.points) == 1:
@@ -129,7 +134,8 @@ class CalibrationWindow:
             dy = (y1 - y0) / self.scale_factor
             self.pixel_distance = math.hypot(dx, dy)
             self.info_label.config(
-                text=f"Pixel distance: {self.pixel_distance:.1f} px. Enter real distance and press Calculate.",
+                text=f"Pixel distance: {self.pixel_distance:.1f} px. "
+                     f"Enter real distance and press Calculate.",
                 foreground='green')
             self.distance_entry.config(state='normal')
             self.distance_entry.focus()
@@ -143,8 +149,9 @@ class CalibrationWindow:
             if real_distance <= 0:
                 raise ValueError("Distance must be > 0")
             self.mu_per_pixel = real_distance / self.pixel_distance
-            self.info_label.config(text=f"Calibration: {self.mu_per_pixel:.4f} um/pixel",
-                                   foreground='darkgreen')
+            self.info_label.config(
+                text=f"Calibration: {self.mu_per_pixel:.4f} um/pixel",
+                foreground='darkgreen')
             self.done_button.config(state='normal')
         except Exception as e:
             messagebox.showerror("Error", f"Invalid distance: {e}")
@@ -196,6 +203,10 @@ class GUVDetectorGUI:
         self.calibration_data = {}
         self._build_ui()
 
+    # ------------------------------------------------------------------
+    # UI
+    # ------------------------------------------------------------------
+
     def _build_ui(self):
         main = ttk.Frame(self.root, padding=10)
         main.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
@@ -203,38 +214,50 @@ class GUVDetectorGUI:
         ttk.Label(main, text="GUV Detector", font=('Helvetica', 20, 'bold')).grid(
             row=0, column=0, columnspan=3, pady=6)
 
-        ttk.Label(main, text="Image Folder:", font=('Helvetica', 12)).grid(row=1, column=0, sticky=tk.W)
-        ttk.Entry(main, textvariable=self.folder_path, width=50).grid(row=1, column=1, padx=4, sticky=tk.W)
-        ttk.Button(main, text="Browse...", command=self.browse_folder).grid(row=1, column=2, padx=4)
+        ttk.Label(main, text="Image Folder:", font=('Helvetica', 12)).grid(
+            row=1, column=0, sticky=tk.W)
+        ttk.Entry(main, textvariable=self.folder_path, width=50).grid(
+            row=1, column=1, padx=4, sticky=tk.W)
+        ttk.Button(main, text="Browse...", command=self.browse_folder).grid(
+            row=1, column=2, padx=4)
 
-        ttk.Label(main, text="Model Size:", font=('Helvetica', 12)).grid(row=2, column=0, sticky=tk.W)
+        ttk.Label(main, text="Model Size:", font=('Helvetica', 12)).grid(
+            row=2, column=0, sticky=tk.W)
         ttk.Combobox(main, textvariable=self.model_size, values=["n","s","m","l","x"],
                      state='readonly', width=18).grid(row=2, column=1, sticky=tk.W)
 
-        ttk.Label(main, text="Modality:", font=('Helvetica', 12)).grid(row=3, column=0, sticky=tk.W)
+        ttk.Label(main, text="Modality:", font=('Helvetica', 12)).grid(
+            row=3, column=0, sticky=tk.W)
         ttk.Combobox(main, textvariable=self.modality, values=["rgb","grey"],
                      state='readonly', width=18).grid(row=3, column=1, sticky=tk.W)
 
-        ttk.Label(main, text="Split factor:", font=('Helvetica', 12)).grid(row=4, column=0, sticky=tk.W)
+        ttk.Label(main, text="Split factor:", font=('Helvetica', 12)).grid(
+            row=4, column=0, sticky=tk.W)
         sf_frame = ttk.Frame(main)
         sf_frame.grid(row=4, column=1, sticky=tk.W)
         ttk.Radiobutton(sf_frame, text="2 (4)", variable=self.split_factor, value=2).pack(side=tk.LEFT)
         ttk.Radiobutton(sf_frame, text="4 (16)", variable=self.split_factor, value=4).pack(side=tk.LEFT)
 
-        ttk.Label(main, text="Conf threshold:", font=('Helvetica', 12)).grid(row=5, column=0, sticky=tk.W)
-        ttk.Entry(main, textvariable=self.conf_thresh, width=10).grid(row=5, column=1, sticky=tk.W)
+        ttk.Label(main, text="Conf threshold:", font=('Helvetica', 12)).grid(
+            row=5, column=0, sticky=tk.W)
+        ttk.Entry(main, textvariable=self.conf_thresh, width=10).grid(
+            row=5, column=1, sticky=tk.W)
 
-        ttk.Label(main, text="um/pixel", font=('Helvetica', 12)).grid(row=6, column=0, sticky=tk.W)
-        ttk.Entry(main, textvariable=self.mu_per_pixel, width=10).grid(row=6, column=1, sticky=tk.W)
+        ttk.Label(main, text="um/pixel", font=('Helvetica', 12)).grid(
+            row=6, column=0, sticky=tk.W)
+        ttk.Entry(main, textvariable=self.mu_per_pixel, width=10).grid(
+            row=6, column=1, sticky=tk.W)
 
         ttk.Checkbutton(main, text="Interactive calibration per image",
-                        variable=self.use_interactive_calibration).grid(row=7, column=1, sticky=tk.W, pady=4)
+                        variable=self.use_interactive_calibration).grid(
+            row=7, column=1, sticky=tk.W, pady=4)
 
         btn_frame = ttk.Frame(main)
         btn_frame.grid(row=8, column=0, columnspan=3, pady=8)
         self.run_button = ttk.Button(btn_frame, text="Run Detection", command=self.run_detection)
         self.run_button.pack(side=tk.LEFT, padx=6)
-        self.reset_button = ttk.Button(btn_frame, text="Reset", command=self.reset_all, state='disabled')
+        self.reset_button = ttk.Button(btn_frame, text="Reset",
+                                       command=self.reset_all, state='disabled')
         self.reset_button.pack(side=tk.LEFT, padx=6)
 
         self.progress = ttk.Progressbar(main, mode='determinate', length=420)
@@ -244,7 +267,8 @@ class GUVDetectorGUI:
         self.status_label.grid(row=10, column=0, columnspan=3, pady=4)
 
         self.notebook = ttk.Notebook(main)
-        self.notebook.grid(row=11, column=0, columnspan=3, sticky=(tk.N,tk.S,tk.E,tk.W), pady=6)
+        self.notebook.grid(row=11, column=0, columnspan=3,
+                           sticky=(tk.N, tk.S, tk.E, tk.W), pady=6)
         result_frame = ttk.Frame(self.notebook, padding=8)
         self.notebook.add(result_frame, text="Text Results")
         self.result_text = tk.Text(result_frame, height=18, wrap=tk.WORD)
@@ -256,13 +280,18 @@ class GUVDetectorGUI:
         self.plot_frame = ttk.Frame(self.notebook, padding=8)
         self.notebook.add(self.plot_frame, text="Size Distribution Plot")
         self.plot_placeholder = ttk.Label(self.plot_frame,
-                                          text="Run detection to see the plot", font=('Helvetica', 14))
+                                          text="Run detection to see the plot",
+                                          font=('Helvetica', 14))
         self.plot_placeholder.pack(expand=True)
 
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main.columnconfigure(1, weight=1)
         main.rowconfigure(11, weight=1)
+
+    # ------------------------------------------------------------------
+    # UI helpers
+    # ------------------------------------------------------------------
 
     def browse_folder(self):
         f = filedialog.askdirectory(title="Select Image Folder")
@@ -288,7 +317,8 @@ class GUVDetectorGUI:
         for w in self.plot_frame.winfo_children():
             w.destroy()
         self.plot_placeholder = ttk.Label(self.plot_frame,
-                                          text="Run detection to see the plot", font=('Helvetica', 14))
+                                          text="Run detection to see the plot",
+                                          font=('Helvetica', 14))
         self.plot_placeholder.pack(expand=True)
         self.calibration_data = {}
         self.set_status("Ready")
@@ -314,14 +344,15 @@ class GUVDetectorGUI:
         self.result_text.delete(1.0, tk.END)
         for w in self.plot_frame.winfo_children():
             w.destroy()
-        self.plot_placeholder = ttk.Label(self.plot_frame, text="Processing...", font=('Helvetica', 14))
+        self.plot_placeholder = ttk.Label(self.plot_frame,
+                                          text="Processing...", font=('Helvetica', 14))
         self.plot_placeholder.pack(expand=True)
 
         t = threading.Thread(target=self._worker_run, daemon=True)
         t.start()
 
     # ------------------------------------------------------------------
-    # Worker: single pipeline regardless of flat or subfolder layout
+    # Main worker: global run (all images pooled) + per-subfolder runs
     # ------------------------------------------------------------------
 
     def _worker_run(self):
@@ -331,23 +362,21 @@ class GUVDetectorGUI:
 
             valid_ext = ('.png', '.jpg', '.jpeg')
 
-            # ── Discover image sources ──────────────────────────────────────
-            # Check for valid subfolders (containing images, not generated by us)
+            # ── Discover subfolders ─────────────────────────────────────────
             subfolders = []
             for entry in sorted(os.scandir(root_folder), key=lambda e: e.name):
                 if not entry.is_dir():
                     continue
                 if is_generated_folder(entry.name):
                     continue
-                has_images = any(f.lower().endswith(valid_ext) for f in os.listdir(entry.path))
-                if has_images:
+                if any(f.lower().endswith(valid_ext) for f in os.listdir(entry.path)):
                     subfolders.append(entry.path)
 
-            # Build flat list of (source_folder, filename) pairs
+            # ── Build flat image pool ───────────────────────────────────────
             if subfolders:
-                # BATCH MODE: pool all images from every subfolder
                 self.append_result(
-                    f"Batch mode: pooling images from {len(subfolders)} subfolder(s) into a single run.")
+                    f"Batch mode: found {len(subfolders)} subfolder(s). "
+                    f"Running global + individual analyses.")
                 for sf in subfolders:
                     self.append_result(f"  - {os.path.basename(sf)}")
                 image_sources = []
@@ -356,9 +385,9 @@ class GUVDetectorGUI:
                     for img in imgs:
                         image_sources.append((sf, img))
             else:
-                # SINGLE FOLDER MODE: original behaviour
                 self.append_result("Single-folder mode (no valid subfolders found).")
-                imgs = sorted(f for f in os.listdir(root_folder) if f.lower().endswith(valid_ext))
+                imgs = sorted(f for f in os.listdir(root_folder)
+                              if f.lower().endswith(valid_ext))
                 image_sources = [(root_folder, img) for img in imgs]
 
             if not image_sources:
@@ -369,8 +398,7 @@ class GUVDetectorGUI:
             with Image.open(first_path) as im:
                 ref_size = im.size
 
-            valid_sources = []
-            rejected = []
+            valid_sources, rejected = [], []
             for src_folder, fname in image_sources:
                 try:
                     with Image.open(os.path.join(src_folder, fname)) as im:
@@ -389,7 +417,7 @@ class GUVDetectorGUI:
             for r in rejected:
                 self.append_result(f"  - ignored: {r}")
 
-            # ── Calibration: once, on the first image of the whole pool ─────
+            # ── Calibration: once for everything ───────────────────────────
             if self.use_interactive_calibration.get():
                 self.append_result("\n=== CALIBRATION PHASE ===")
                 first_folder, first_name = valid_sources[0]
@@ -405,20 +433,20 @@ class GUVDetectorGUI:
                     raise RuntimeError("Calibration cancelled by user.")
 
                 self.append_result(
-                    f"Calibration: {calib:.4f} um/pixel — applied to ALL {len(valid_sources)} images.")
+                    f"Calibration: {calib:.4f} um/pixel — applied to ALL images.")
             else:
                 calib = self.mu_per_pixel.get()
                 self.append_result(f"Using default calibration: {calib} um/pixel")
 
-            # Every image gets the same calibration value
             self.calibration_data = {fname: calib for _, fname in valid_sources}
 
-            # ── Create ONE processing folder under root_folder ──────────────
+            # ── Create ONE global processing folder under root ──────────────
             proc_folder = self._create_unique_folder(root_folder)
+            self.append_result(f"\n=== GLOBAL RUN ===")
             self.append_result(f"Processing folder: {proc_folder}")
 
-            # ── Split all images into proc_folder ───────────────────────────
-            self.set_status("Splitting images...")
+            # ── Split all images into global proc_folder ────────────────────
+            self.set_status("Splitting images (global)...")
             self.append_result("\n=== SPLITTING IMAGES ===")
             total = len(valid_sources)
             self.set_progress(0, total)
@@ -427,8 +455,7 @@ class GUVDetectorGUI:
             for idx, (src_folder, img_name) in enumerate(valid_sources, start=1):
                 img = Image.open(os.path.join(src_folder, img_name))
                 w, h = img.size
-                step_w = w // sf_n
-                step_h = h // sf_n
+                step_w, step_h = w // sf_n, h // sf_n
                 crop_idx = 0
                 for i in range(sf_n):
                     for j in range(sf_n):
@@ -454,8 +481,8 @@ class GUVDetectorGUI:
                 raise RuntimeError(f"Model not found at: {model_path}")
             model = ultralytics.YOLO(model_path)
 
-            # ── Run inference on the full pool ──────────────────────────────
-            self.set_status("Running predictions (YOLO)...")
+            # ── Global inference ────────────────────────────────────────────
+            self.set_status("Running predictions (YOLO) — global...")
             img_list = [f for f in os.listdir(proc_folder)
                         if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
             n_imgs = len(img_list)
@@ -476,9 +503,9 @@ class GUVDetectorGUI:
             if not os.path.exists(predict_root):
                 raise RuntimeError("YOLO did not produce a 'predict' folder.")
 
-            # ── Analyse all predictions ─────────────────────────────────────
-            self.set_status("Analyzing predictions...")
-            self.append_result("\n=== ANALYSIS ===")
+            # ── Global analysis ─────────────────────────────────────────────
+            self.set_status("Analyzing predictions (global)...")
+            self.append_result("\n=== GLOBAL ANALYSIS ===")
             labels_dir = os.path.join(predict_root, 'labels')
             if not os.path.exists(labels_dir):
                 raise RuntimeError("No labels folder found in predictions.")
@@ -538,7 +565,7 @@ class GUVDetectorGUI:
                 self.set_progress(idx, total_labels)
                 self.set_status(f"Analyzing {idx}/{total_labels}")
 
-            # ── Statistics & plot ───────────────────────────────────────────
+            # ── Global stats & plot ─────────────────────────────────────────
             if not dim_list:
                 self.append_result("No GUVs detected across all images.")
                 self.set_status("Complete (no GUVs).")
@@ -569,18 +596,15 @@ class GUVDetectorGUI:
                        label=f'Q1: {q1:.2f} um')
             ax.axvline(q3, color='red', linestyle='dashed', linewidth=3,
                        label=f'Q3: {q3:.2f} um')
-
             if shape is not None:
                 x = np.linspace(0, max(dim_list), 1000)
                 pdf = lognorm.pdf(x, shape, loc=loc, scale=scale)
-                ax.plot(x, pdf, 'k-', linewidth=3, label=(
-                    f'Log-normal fit\nmu={mu_ln:.2f}, sigma={sigma_ln:.2f}\n'
-                    f'Total GUVs: {len(dim_list)}'
-                ))
-
+                ax.plot(x, pdf, 'k-', linewidth=3,
+                        label=(f'Log-normal fit\nmu={mu_ln:.2f}, sigma={sigma_ln:.2f}\n'
+                               f'Total GUVs: {len(dim_list)}'))
             ax.set_xlabel('GUV Diameter (um)', fontsize=20)
             ax.set_ylabel('Density of GUVs', fontsize=20)
-            ax.set_title(self.current_folder_name, fontsize=16)
+            ax.set_title(f"{self.current_folder_name} (global)", fontsize=16)
             ax.tick_params(axis='both', which='major', labelsize=16)
             ax.legend(fontsize=16)
             ax.grid(linestyle=':')
@@ -589,7 +613,7 @@ class GUVDetectorGUI:
             fig.savefig(plot_path, dpi=300, bbox_inches='tight')
             self.root.after(0, lambda f=fig: self._show_plot(f))
 
-            # CSV
+            # Global CSV
             csv_path = os.path.join(proc_folder, f"{self.current_folder_name}.csv")
             with open(csv_path, mode='w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
@@ -597,14 +621,14 @@ class GUVDetectorGUI:
                 for i, diameter in enumerate(dim_list, start=1):
                     writer.writerow([i, f"{diameter:.4f}"])
 
-            # JSON pre-annotation
+            # Global JSON
             document_root, folder_path_out = self.create_json(proc_folder)
             self.append_result(f"\nPre-annotation information for Label Studio")
             self.append_result(f"Document root: {document_root}")
             self.append_result(f"Folder path: {folder_path_out}")
 
-            # Text summary
-            self.append_result("\n=== RESULTS ===")
+            # Global text summary
+            self.append_result("\n=== GLOBAL RESULTS ===")
             self.append_result(f"Total GUVs detected: {len(arr)}")
             self.append_result(f"Edge: {count_edge}  |  Interior: {count_inter}")
             self.append_result(f"Median: {median:.2f} um  Q1: {q1:.2f} um  Q3: {q3:.2f} um")
@@ -617,6 +641,17 @@ class GUVDetectorGUI:
                 chunk = dim_list[i:i+5]
                 self.append_result("  " + ", ".join(f"{d:.2f}" for d in chunk))
 
+            # ── Individual subfolder runs ───────────────────────────────────
+            if subfolders:
+                self.append_result("\n" + "="*60)
+                self.append_result("=== INDIVIDUAL SUBFOLDER ANALYSIS ===")
+                self.append_result("="*60)
+                for sf in subfolders:
+                    sf_name = os.path.basename(sf)
+                    self.append_result(f"\n[Subfolder: {sf_name}]")
+                    self.set_status(f"Processing subfolder: {sf_name}")
+                    self._run_single_folder(sf, calib)
+
             self.set_status("Complete")
             self.set_progress(100, 100)
             self.reset_button.config(state='normal')
@@ -628,6 +663,193 @@ class GUVDetectorGUI:
             self.reset_button.config(state='normal')
         finally:
             self.run_button.config(state='disabled')
+
+    # ------------------------------------------------------------------
+    # Individual subfolder pipeline (reuses already-computed calibration)
+    # ------------------------------------------------------------------
+
+    def _run_single_folder(self, folder: str, calib: float):
+        """
+        Run the full pipeline on a single subfolder using a pre-computed
+        calibration value. Creates its own processing_images/ inside `folder`.
+        Saves PDF, CSV and JSON there. Does NOT update the main UI plot.
+        """
+        folder_name = os.path.basename(os.path.normpath(folder))
+        valid_ext = ('.png', '.jpg', '.jpeg')
+
+        # collect images
+        files = sorted(f for f in os.listdir(folder) if f.lower().endswith(valid_ext))
+        if not files:
+            self.append_result(f"  [SKIP] No images in {folder_name}")
+            return
+
+        # size consistency
+        with Image.open(os.path.join(folder, files[0])) as im:
+            ref_size = im.size
+        valid_files, rejected = [], []
+        for f in files:
+            try:
+                with Image.open(os.path.join(folder, f)) as im:
+                    (valid_files if im.size == ref_size else rejected).append(f)
+            except Exception:
+                rejected.append(f)
+
+        if not valid_files:
+            self.append_result(f"  [SKIP] No consistent-size images in {folder_name}")
+            return
+        for r in rejected:
+            self.append_result(f"    ignored: {r}")
+
+        local_calib = {f: calib for f in valid_files}
+
+        # create processing folder inside this subfolder
+        proc_folder = self._create_unique_folder(folder)
+        self.append_result(f"  Processing folder: {proc_folder}")
+
+        # split
+        sf_n = int(self.split_factor.get())
+        for idx, img_name in enumerate(valid_files, start=1):
+            img = Image.open(os.path.join(folder, img_name))
+            w, h = img.size
+            step_w, step_h = w // sf_n, h // sf_n
+            crop_idx = 0
+            for i in range(sf_n):
+                for j in range(sf_n):
+                    crop = img.crop((j * step_w, i * step_h,
+                                     j * step_w + step_w, i * step_h + step_h))
+                    if self.modality.get() == 'grey':
+                        crop = crop.convert('L')
+                    crop.save(os.path.join(
+                        proc_folder,
+                        f"{os.path.splitext(img_name)[0]}_crop{crop_idx + 1}.png"))
+                    crop_idx += 1
+            self.set_status(f"[{folder_name}] Split {idx}/{len(valid_files)}")
+
+        # load model and predict
+        model_rel = os.path.join('model', self.modality.get(),
+                                 f'yolo11_{self.model_size.get()}', 'best.pt')
+        model_path = resource_path(model_rel)
+        if not os.path.exists(model_path):
+            self.append_result(f"  [ERROR] Model not found: {model_path}")
+            return
+        model = ultralytics.YOLO(model_path)
+
+        results = model.predict(
+            source=proc_folder, save=True, save_txt=True, save_conf=True,
+            project=proc_folder, conf=float(self.conf_thresh.get()), stream=True
+        )
+        for _ in results:
+            pass  # consume stream to completion
+
+        predict_root = os.path.join(proc_folder, 'predict')
+        labels_dir = os.path.join(predict_root, 'labels')
+        if not os.path.exists(labels_dir):
+            self.append_result(f"  [WARN] No labels produced for {folder_name}")
+            return
+
+        # analyse
+        dim_list, count_edge, count_inter = [], 0, 0
+        for lab in sorted(f for f in os.listdir(labels_dir) if f.endswith('.txt')):
+            base = os.path.splitext(lab)[0]
+            img_candidate = None
+            for ext in ('.png', '.jpg', '.jpeg'):
+                p = os.path.join(predict_root, base + ext)
+                if os.path.exists(p):
+                    img_candidate = p
+                    break
+            if img_candidate is None:
+                continue
+
+            # recover calibration from original filename
+            crop_base = os.path.basename(img_candidate).rsplit('_crop', 1)[0]
+            mu = calib  # fallback
+            for ext in ('.png', '.jpg', '.jpeg'):
+                cand = crop_base + ext
+                if cand in local_calib:
+                    mu = float(local_calib[cand])
+                    break
+
+            w_img, h_img = Image.open(img_candidate).size
+            with open(os.path.join(labels_dir, lab)) as fh:
+                for line in fh:
+                    parts = line.strip().split()
+                    if len(parts) >= 6:
+                        try:
+                            _, xc, yc, wbox, hbox, conf = map(float, parts[:6])
+                            if conf >= float(self.conf_thresh.get()):
+                                W = wbox * w_img
+                                H = hbox * h_img
+                                max_dim = max(W, H)
+                                min_dim = min(W, H)
+                                if min_dim <= 0.5 * max_dim:
+                                    count_edge += 1
+                                else:
+                                    count_inter += 1
+                                dim_list.append(max_dim * mu)
+                        except Exception:
+                            continue
+
+        if not dim_list:
+            self.append_result(f"  [{folder_name}] No GUVs detected.")
+            return
+
+        arr = np.array(dim_list)
+        median = np.median(arr)
+        q1, q3 = np.percentile(arr, 25), np.percentile(arr, 75)
+        try:
+            shape, loc, scale = lognorm.fit(arr, floc=0)
+            mu_ln, sigma_ln = float(np.log(scale)), float(shape)
+        except Exception:
+            shape = loc = scale = None
+            mu_ln = sigma_ln = float('nan')
+
+        # plot — saved to disk only, does not replace the global UI plot
+        fig = Figure(figsize=(10, 6), tight_layout=True)
+        ax = fig.add_subplot(111)
+        bin_width = 5
+        bins = np.arange(0, max(dim_list) + bin_width, bin_width)
+        ax.hist(dim_list, bins=bins, color='steelblue', alpha=0.5, density=True)
+        ax.axvline(median, color='darkred', linestyle='dashed', linewidth=3,
+                   label=f'Median: {median:.2f} um')
+        ax.axvline(q1, color='red', linestyle='dashed', linewidth=3,
+                   label=f'Q1: {q1:.2f} um')
+        ax.axvline(q3, color='red', linestyle='dashed', linewidth=3,
+                   label=f'Q3: {q3:.2f} um')
+        if shape is not None:
+            x = np.linspace(0, max(dim_list), 1000)
+            ax.plot(x, lognorm.pdf(x, shape, loc=loc, scale=scale), 'k-', linewidth=3,
+                    label=(f'Log-normal fit\nmu={mu_ln:.2f}, sigma={sigma_ln:.2f}\n'
+                           f'Total GUVs: {len(dim_list)}'))
+        ax.set_xlabel('GUV Diameter (um)', fontsize=20)
+        ax.set_ylabel('Density of GUVs', fontsize=20)
+        ax.set_title(folder_name, fontsize=16)
+        ax.tick_params(axis='both', which='major', labelsize=16)
+        ax.legend(fontsize=16)
+        ax.grid(linestyle=':')
+
+        plot_path = os.path.join(proc_folder, f'{folder_name}.pdf')
+        fig.savefig(plot_path, dpi=300, bbox_inches='tight')
+
+        # CSV
+        csv_path = os.path.join(proc_folder, f'{folder_name}.csv')
+        with open(csv_path, mode='w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["GUV_ID", "Diameter_um"])
+            for i, d in enumerate(dim_list, start=1):
+                writer.writerow([i, f"{d:.4f}"])
+
+        # JSON — temporarily swap current_folder_name so create_json uses the
+        # subfolder name for the output filename, then restore it
+        saved_name = self.current_folder_name
+        self.current_folder_name = folder_name
+        self.create_json(proc_folder)
+        self.current_folder_name = saved_name
+
+        # text summary for this subfolder
+        self.append_result(f"  GUVs: {len(arr)}  |  Edge: {count_edge}  |  Interior: {count_inter}")
+        self.append_result(f"  Median: {median:.2f} um  Q1: {q1:.2f} um  Q3: {q3:.2f} um")
+        self.append_result(f"  Log-normal  mu={mu_ln:.2f}, sigma={sigma_ln:.2f}")
+        self.append_result(f"  Plot: {plot_path}")
 
     # ------------------------------------------------------------------
     # Helpers
@@ -665,15 +887,13 @@ class GUVDetectorGUI:
                 "annotations": [],
                 "predictions": []
             }
-            total_path = os.path.join(document_root, folder_name)
-            labels = os.path.join(total_path, "predict", "labels")
+            labels = os.path.join(document_root, folder_name, "predict", "labels")
             image_path = os.path.join(document_root, folder_name, img_name)
             W, H = Image.open(image_path).size
             if os.path.exists(labels):
                 result = []
                 stem = os.path.splitext(img_name)[0]
-                preannotation_path = os.path.join(labels, stem + ".txt")
-                for bbox in self.read_pred_boxes(preannotation_path):
+                for bbox in self.read_pred_boxes(os.path.join(labels, stem + ".txt")):
                     xc, yc, w, h, c = bbox
                     x1 = xc - w / 2
                     y1 = yc - h / 2
@@ -704,16 +924,11 @@ class GUVDetectorGUI:
         return document_root, folder_name
 
     def _get_mu_for_cropped(self, cropped_name):
-        """
-        Given a crop filename like 'image001_crop1.png', find the calibration
-        for 'image001.ext'. Since all images share one value, any match works.
-        """
         base = cropped_name.rsplit('_crop', 1)[0]
         for ext in ('.png', '.jpg', '.jpeg'):
             cand = base + ext
             if cand in self.calibration_data:
                 return float(self.calibration_data[cand])
-        # Fallback: return the single global calibration value stored
         if self.calibration_data:
             return float(next(iter(self.calibration_data.values())))
         return self.mu_per_pixel.get()
@@ -727,7 +942,6 @@ class GUVDetectorGUI:
         self.notebook.select(1)
 
     def _create_unique_folder(self, parent_folder):
-        """Create processing_images (or processing_images_N) under parent_folder."""
         base_name = PROCESSING_FOLDER_PREFIX
         sub_folder = os.path.join(parent_folder, base_name)
         if not os.path.exists(sub_folder):
