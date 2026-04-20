@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 CONF_THRESH  = 0.25
 IOU_THRESH   = 0.5
-MU_PER_PX    = 0.1205   # µm per pixel (Nikon)
+MU_PER_PX    = 0.339   # µm per pixel (Nikon)
 
 # ── Style constants ────────────────────────────────────────────────────────────
 FS_LABEL  = 14
@@ -171,9 +171,9 @@ def evaluate(folder, model_size, modality):
     px_last   = ">100"
 
     # µm bins  (formula: sqrt(max²+min²)/sqrt(2) * MU_PER_PX, Nikon 0.1205)
-    um_edges  = list(range(0, 22, 2))
+    um_edges  = list(range(0, 55, 5))
     um_labels = [f"{um_edges[i]}-{um_edges[i+1]}" for i in range(len(um_edges) - 1)]
-    um_last   = ">20"
+    um_last   = ">50"
 
     stats = {'TP': 0, 'FP': 0, 'FN': 0}
     stats_per_bin    = defaultdict(lambda: {'TP': 0, 'FP': 0, 'FN': 0, 'GT_total': 0})

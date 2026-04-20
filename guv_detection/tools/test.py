@@ -14,10 +14,12 @@ if __name__ == "__main__":
     parser.add_argument("--main_folder", type=str, default="/media/angelo/OS/Users/lasal/OneDrive - Scuola Superiore Sant'Anna/PhD_notes/Liposomes detection", 
                         help="Path to the Liposomes detection folder")
     parser.add_argument("--folder", type=str, default="test_folder", help="test folder, it has 'test' subgolder with 'images' and 'labels'")
+    parser.add_argument("--model_folder", type=str, default=os.path.join('C:\\', 'Users', 'lasal', 'Documents', 'GUV_detector'),
+                        help="Path to the GUV_detector folder containing trained models")
 
     args = parser.parse_args()
 
-    model_path = os.path.join('/home', 'angelo', 'Documenti', 'GUV_detector', f'train_{args.modality}', f'train_{args.model_size}', 'weights', 'best.pt')  # Pretrained model path
+    model_path = os.path.join(args.model_folder, f'train_{args.modality}', f'train_{args.model_size}', 'weights', 'best.pt')  # Pretrained model path
     model = ultralytics.YOLO(model_path)  # Load a custom model
 
     # model predint on the folder
