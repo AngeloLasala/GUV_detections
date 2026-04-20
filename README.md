@@ -57,6 +57,17 @@ python build_app.py
 Once the build process is completed, the executable file **GUV_Detector.exe** will be created inside the `dist/` folder.
 You can copy the .exe file to your desktop (or any preferred location), double-click it, and start using the app.😄
 
+### Spatial calibration — µm/pixel conversion factors
+
+The app requires a calibration factor to convert pixel measurements to physical units (micrometres). The known values for the microscopes used in this project are:
+
+| Microscope | µm/pixel |
+|---|---|
+| Leica  | **0.339** |
+| Nikon  | **0.1205** |
+
+You can enter the value directly in the app's µm/pixel field, or use the interactive calibration window to derive a custom factor from a known reference distance on your image.
+
 ## 🏷️ Label Studio Inteface - Create GUV project
 
 Label studio is an open source platform usefull for creating a userfrandly interface to laod an annotate dataset for diverse type of ML project. Here, we provide a simple guideline for creating a project releated to GUV detection
