@@ -11,8 +11,21 @@ import numpy as np
 from collections import defaultdict
 import matplotlib.pyplot as plt
 
-CONF_THRESH = 0.25
-IOU_THRESH = 0.5
+CONF_THRESH  = 0.25
+IOU_THRESH   = 0.5
+MU_PER_PX    = 0.1205   # µm per pixel (Nikon)
+
+# ── Style constants ────────────────────────────────────────────────────────────
+FS_LABEL  = 14
+FS_TICK   = 13
+FS_LEGEND = 12
+FS_ANNOT  = 8
+FIGSIZE   = (12, 5)
+
+COLOR_P   = "#084594"   # dark blue  — Precision
+COLOR_R   = "#4292c6"   # mid blue   — Recall
+COLOR_F1  = "#9ecae1"   # light blue — F1
+COLOR_BAR = "#1b7837"   # test green — bars
 
 def yolo_to_xyxy(xc, yc, w, h, img_w, img_h):
     """Convert YOLO format (xc, yc, w, h) to (x1, y1, x2, y2) in pixels."""
@@ -66,11 +79,79 @@ def read_pred_boxes(pred_path, img_w, img_h, conf_thresh=CONF_THRESH):
                         boxes.append(yolo_to_xyxy(xc, yc, w, h, img_w, img_h) + [conf])
     return boxes
 
-def get_bin(area, bin_edges, bin_labels):
-    for i in range(len(bin_edges)-1):
-        if bin_edges[i] <= area < bin_edges[i+1]:
+def get_bin(area, bin_edges, bin_labels, last_label):
+    for i in range(len(bin_edges) - 1):
+        if bin_edges[i] <= area < bin_edges[i + 1]:
             return bin_labels[i]
-    return ">100"
+    return last_label
+
+
+def _guv_dim_um(box):
+    """Dataset formula: sqrt(max_dim² + min_dim²) / sqrt(2) * MU_PER_PX."""
+    w = box[2] - box[0]
+    h = box[3] - box[1]
+    max_dim, min_dim = max(w, h), min(w, h)
+    return np.sqrt(max_dim**2 + min_dim**2) / np.sqrt(2) * MU_PER_PX
+
+
+def _draw_eval_plot(bin_names, precisions, recalls, f1_scores,
+                    num_detected, num_gt, xlabel, title, fig_num,
+                    legend_outside=False):
+    """Shared plotting routine for px and µm evaluation figures."""
+    x        = np.arange(len(bin_names))
+    width    = 0.35
+    y_offset = 5
+
+    fig, ax1 = plt.subplots(figsize=FIGSIZE, num=fig_num)
+
+    # ── Metric lines ──────────────────────────────────────────────────────
+    ax1.plot(x, precisions, marker='o', label='Precision', color=COLOR_P,  linewidth=1.8)
+    ax1.plot(x, recalls,    marker='s', label='Recall',    color=COLOR_R,  linewidth=1.8)
+    ax1.plot(x, f1_scores,  marker='^', label='F1 Score',  color=COLOR_F1, linewidth=1.8)
+    ax1.set_ylim(0, 1.15)
+    ax1.set_ylabel('Precision / Recall / F1', fontsize=FS_LABEL)
+    ax1.set_xlabel(xlabel, fontsize=FS_LABEL)
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(bin_names, rotation=45, fontsize=FS_TICK)
+    ax1.tick_params(axis='y', labelsize=FS_TICK)
+    ax1.spines['top'].set_visible(False)
+    ax1.yaxis.grid(True, linestyle=':', linewidth=0.8, color='#bbbbbb', zorder=0)
+    ax1.set_axisbelow(True)
+
+    # ── Count bars (secondary axis) ───────────────────────────────────────
+    ax2 = ax1.twinx()
+    bars_det = ax2.bar(x - width / 2, num_detected, width,
+                       color=COLOR_BAR, alpha=0.9, edgecolor='white', linewidth=0.5,
+                       label='Detected GUV')
+    bars_gt  = ax2.bar(x + width / 2, num_gt, width,
+                       color=COLOR_BAR, alpha=0.45, edgecolor='white', linewidth=0.5,
+                       hatch='//', label='GT GUV')
+
+    ax2.set_ylim(0, 1200)
+    ax2.set_ylabel('Number of GUV', fontsize=FS_LABEL, color=COLOR_BAR)
+    ax2.tick_params(axis='y', labelsize=FS_TICK, colors=COLOR_BAR)
+    ax2.spines['top'].set_visible(False)
+    ax2.spines['right'].set_edgecolor(COLOR_BAR)
+    ax2.yaxis.grid(True, linestyle=':', linewidth=0.8, color=COLOR_BAR, alpha=0.3, zorder=0)
+    ax2.set_axisbelow(True)
+
+    # metric lines always on top of bars
+    ax1.set_zorder(ax2.get_zorder() + 1)
+    ax1.patch.set_visible(False)
+
+    # ── Legend ────────────────────────────────────────────────────────────
+    lines_1, labels_1 = ax1.get_legend_handles_labels()
+    lines_2, labels_2 = ax2.get_legend_handles_labels()
+    if legend_outside:
+        ax1.legend(lines_1 + lines_2, labels_1 + labels_2, fontsize=FS_LEGEND,
+                   loc='upper left', bbox_to_anchor=(1.08, 1), borderaxespad=0)
+    else:
+        ax1.legend(lines_1 + lines_2, labels_1 + labels_2,
+                   fontsize=FS_LEGEND, loc='upper left')
+
+    # plt.title(title, fontsize=FS_LABEL + 2)
+    plt.tight_layout()
+    plt.show()
 
 def evaluate(folder, model_size, modality):
     image_dir = os.path.join(folder, 'images')
@@ -84,12 +165,19 @@ def evaluate(folder, model_size, modality):
     image_paths = sorted(glob(os.path.join(image_dir, "*.jpg")) + glob(os.path.join(image_dir, "*.png")))
     image_names = [os.path.splitext(os.path.basename(p))[0] for p in image_paths]
 
-    bin_edges = list(range(0, 110, 10))  # fino a 60 incluso
-    bin_labels = [f"{bin_edges[i]}-{bin_edges[i+1]}" for i in range(len(bin_edges)-1)]
+    # pixel bins
+    px_edges  = list(range(0, 110, 10))
+    px_labels = [f"{px_edges[i]}-{px_edges[i+1]}" for i in range(len(px_edges) - 1)]
+    px_last   = ">100"
+
+    # µm bins  (formula: sqrt(max²+min²)/sqrt(2) * MU_PER_PX, Nikon 0.1205)
+    um_edges  = list(range(0, 22, 2))
+    um_labels = [f"{um_edges[i]}-{um_edges[i+1]}" for i in range(len(um_edges) - 1)]
+    um_last   = ">20"
 
     stats = {'TP': 0, 'FP': 0, 'FN': 0}
-    stats_per_bin = defaultdict(lambda: {'TP': 0, 'FP': 0, 'FN': 0, 'GT_total': 0})
-    all_detections = []   # [(conf, TP/FP flag, bin_label)]
+    stats_per_bin    = defaultdict(lambda: {'TP': 0, 'FP': 0, 'FN': 0, 'GT_total': 0})
+    stats_per_bin_um = defaultdict(lambda: {'TP': 0, 'FP': 0, 'FN': 0, 'GT_total': 0})
     all_gt_count = 0
 
     for img_name in image_names:
@@ -106,152 +194,123 @@ def evaluate(folder, model_size, modality):
         pred_boxes = read_pred_boxes(pred_path, img_w, img_h)
 
 
-        # All guv GT in bins
+        # GT bins (px and µm)
         for gb in gt_boxes:
-            gb_width = gb[2] - gb[0]
-            gb_height = gb[3] - gb[1]
-            guv_dimension = (gb_width + gb_height) / 2  # oppure (gb_width * gb_height)**0.5
-            g_bin = get_bin(guv_dimension, bin_edges, bin_labels)
-            stats_per_bin[g_bin]['GT_total'] += 1
+            gb_w = gb[2] - gb[0]
+            gb_h = gb[3] - gb[1]
+            dim_px = (gb_w + gb_h) / 2
+            dim_um = _guv_dim_um(gb)
+            g_bin    = get_bin(dim_px, px_edges, px_labels, px_last)
+            g_bin_um = get_bin(dim_um, um_edges, um_labels, um_last)
+            stats_per_bin[g_bin]['GT_total']       += 1
+            stats_per_bin_um[g_bin_um]['GT_total'] += 1
             all_gt_count += 1
 
         matched_gt = set()
         for pb in pred_boxes:
-            # Calcolo dimensione bbox predetto come media tra larghezza e altezza (oppure sqrt(area))
-            p_width = pb[2] - pb[0]
-            p_height = pb[3] - pb[1]
-            guv_dimension = (p_width + p_height) / 2  # oppure: (p_width * p_height)**0.5
-            p_bin = get_bin(guv_dimension, bin_edges, bin_labels)
+            p_w = pb[2] - pb[0]
+            p_h = pb[3] - pb[1]
+            dim_px = (p_w + p_h) / 2
+            dim_um = _guv_dim_um(pb)
+            p_bin    = get_bin(dim_px, px_edges, px_labels, px_last)
+            p_bin_um = get_bin(dim_um, um_edges, um_labels, um_last)
 
             best_iou = 0
-            best_gt = -1
+            best_gt  = -1
             for i, gb in enumerate(gt_boxes):
                 if i in matched_gt:
                     continue
                 iou_val = iou(pb, gb)
                 if iou_val > best_iou:
                     best_iou = iou_val
-                    best_gt = i
+                    best_gt  = i
 
             conf = pb[4] if len(pb) > 4 else 1.0
             if best_iou >= IOU_THRESH:
                 matched_gt.add(best_gt)
                 stats['TP'] += 1
-                stats_per_bin[p_bin]['TP'] += 1
-                all_detections.append((conf, 1, p_bin))  # TP
-
+                stats_per_bin[p_bin]['TP']          += 1
+                stats_per_bin_um[p_bin_um]['TP']    += 1
             else:
                 stats['FP'] += 1
-                stats_per_bin[p_bin]['FP'] += 1
-                all_detections.append((conf, 0, p_bin))  # FP
-                
+                stats_per_bin[p_bin]['FP']          += 1
+                stats_per_bin_um[p_bin_um]['FP']    += 1
 
-        # Calcolo FN per ogni ground truth non matchato, con bin in base alla dimensione GT
+        # FN
         for i, gb in enumerate(gt_boxes):
             if i not in matched_gt:
-                gb_width = gb[2] - gb[0]
-                gb_height = gb[3] - gb[1]
-                guv_dimension = (gb_width + gb_height) / 2  # oppure: (gb_width * gb_height)**0.5
-                g_bin = get_bin(guv_dimension, bin_edges, bin_labels)
-
+                gb_w = gb[2] - gb[0]
+                gb_h = gb[3] - gb[1]
+                dim_px = (gb_w + gb_h) / 2
+                dim_um = _guv_dim_um(gb)
+                g_bin    = get_bin(dim_px, px_edges, px_labels, px_last)
+                g_bin_um = get_bin(dim_um, um_edges, um_labels, um_last)
                 stats['FN'] += 1
-                stats_per_bin[g_bin]['FN'] += 1
+                stats_per_bin[g_bin]['FN']          += 1
+                stats_per_bin_um[g_bin_um]['FN']    += 1
 
 
-    # Ordinamento corretto dei bin
-    def bin_sort_key(bin_name):
+    def bin_sort_key(b):
         try:
-            start = int(bin_name.split('-')[0])
-        except:
-            start = 9999  # "60+" or others go last
-        return start
+            return int(b.split('-')[0])
+        except Exception:
+            return 9999
 
-    # Calcolo precision, recall e volumi
-    bin_names = sorted(stats_per_bin.keys(), key=bin_sort_key)
-    precisions, recalls, f1_scores = [], [], []
-    num_detected, num_gt = [], []
-
-    for b in bin_names:
-        tp = stats_per_bin[b]['TP']
-        fp = stats_per_bin[b]['FP']
-        fn = stats_per_bin[b]['FN']
-        gt_total = stats_per_bin[b]['GT_total']
-
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
-        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
-        f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-
-        precisions.append(precision)
-        recalls.append(recall)
-        f1_scores.append(f1)
-        num_detected.append(tp + fp)
-        num_gt.append(gt_total)
-
-    # print the sum of num_gt and num_detected
-    print(f"Total GT: {sum(num_gt)}, Total Detected: {sum(num_detected)}\n")
-
-    print("Bin-wise Evaluation:")
-    for jj in range(len(bin_names)):
-        print(f"  Bin {bin_names[jj]}: GT={num_gt[jj]}, Detected={num_detected[jj]}, Precision={precisions[jj]:.3f}, Recall={recalls[jj]:.3f}, F1={f1_scores[jj]:.3f}")
-    print()
+    def _compute_metrics(spb):
+        all_bins = sorted(spb.keys(), key=bin_sort_key)
+        prec, rec, f1s, n_det, n_gt = [], [], [], [], []
+        for b in all_bins:
+            tp = spb[b]['TP']; fp = spb[b]['FP']; fn = spb[b]['FN']
+            p = tp / (tp + fp) if (tp + fp) > 0 else 0
+            r = tp / (tp + fn) if (tp + fn) > 0 else 0
+            f = 2 * p * r / (p + r) if (p + r) > 0 else 0
+            prec.append(p); rec.append(r); f1s.append(f)
+            n_det.append(tp + fp); n_gt.append(spb[b]['GT_total'])
+        return all_bins, prec, rec, f1s, np.array(n_det), np.array(n_gt)
 
     def compute_ap(recall, precision):
-        """
-        Compute the average precision (AP) using COCO-style 101-point interpolation.
-        (Identical to Ultralytics' implementation)
-        """
         mrec = np.concatenate(([0.0], recall, [1.0]))
         mpre = np.concatenate(([1.0], precision, [0.0]))
-
-        # Precision envelope (monotone decreasing)
         mpre = np.flip(np.maximum.accumulate(np.flip(mpre)))
-
-        # Integration method (COCO 101-point)
-        x = np.linspace(0, 1, 101)
+        x    = np.linspace(0, 1, 101)
         func = np.trapezoid if hasattr(np, 'trapezoid') else np.trapz
-        ap = func(np.interp(x, mrec, mpre), x)
+        return func(np.interp(x, mrec, mpre), x)
 
-        return ap, mpre, mrec
+    # ── Pixel plot ────────────────────────────────────────────────────────
+    bin_names, precisions, recalls, f1_scores, num_detected, num_gt = \
+        _compute_metrics(stats_per_bin)
 
-    ap, mpre, mrec = compute_ap(recalls, precisions)
-    print(f"Overall AP: {ap:.4f}\n")
+    print(f"Total GT: {sum(num_gt)}, Total Detected: {sum(num_detected)}\n")
+    print("Bin-wise Evaluation (pixels):")
+    for j in range(len(bin_names)):
+        print(f"  Bin {bin_names[j]}: GT={num_gt[j]}, Det={num_detected[j]}, "
+              f"P={precisions[j]:.3f}, R={recalls[j]:.3f}, F1={f1_scores[j]:.3f}")
+    print(f"Overall AP (px): {compute_ap(recalls, precisions):.4f}\n")
 
+    _draw_eval_plot(
+        bin_names, precisions, recalls, f1_scores, num_detected, num_gt,
+        xlabel='GUV Size Range (pixels)',
+        title=f'Precision / Recall / F1 by BBox Size (px) — {modality} YOLOv11_{model_size}',
+        fig_num=f"Eval-px-{modality}-{model_size}",
+    )
 
-    ## PLOTTING
-    x = np.arange(len(bin_names))
-    width = 0.35
+    # ── µm plot ───────────────────────────────────────────────────────────
+    bin_names_um, prec_um, rec_um, f1_um, ndet_um, ngt_um = \
+        _compute_metrics(stats_per_bin_um)
 
-    # Plot
-    fig, ax1 = plt.subplots(figsize=(16, 8), num=f"Evaluation-{modality}-YOLOv11_{model_size}")
+    print("Bin-wise Evaluation (µm):")
+    for j in range(len(bin_names_um)):
+        print(f"  Bin {bin_names_um[j]} µm: GT={ngt_um[j]}, Det={ndet_um[j]}, "
+              f"P={prec_um[j]:.3f}, R={rec_um[j]:.3f}, F1={f1_um[j]:.3f}")
+    print(f"Overall AP (µm): {compute_ap(rec_um, prec_um):.4f}\n")
 
-    # Precision & Recall lines
-    ax1.plot(x, precisions, marker='o', label='Precision', color='blue')
-    ax1.plot(x, recalls, marker='o', label='Recall', color='green')
-    ax1.plot(x, f1_scores, marker='o', label='F1 Score', color='orange')
-    ax1.set_ylim(0, 1.1)
-    ax1.set_ylabel('Precision / Recall', color='black', fontsize=20)
-    ax1.set_xlabel('BBox Size Range (pixels)', color='black', fontsize=22)
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(bin_names, rotation=45, fontsize=18)
-    ax1.tick_params(axis='y', labelsize=18)
-    ax1.grid(linestyle=':', alpha=0.7)
-
-    # Secondary axis for counts
-    ax2 = ax1.twinx()
-    ax2.bar(x - width/2, num_detected, width, label='Detected GUV', color='skyblue', alpha=0.6)
-    ax2.bar(x + width/2, num_gt, width, label='GUV', color='gray', alpha=0.5)
-    ax2.set_ylabel('Number of GUV', color='black', fontsize=20)
-    ax2.tick_params(axis='y', labelsize=18)
-    ax2.grid(linestyle=':', alpha=0.7)
-
-    # Legends
-    lines_1, labels_1 = ax1.get_legend_handles_labels()
-    lines_2, labels_2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines_1 + lines_2, labels_1 + labels_2, fontsize=18)
-
-    plt.title('Precision/Recall and Object Counts by BBox Size Range', fontsize=26)
-    plt.tight_layout()
-    plt.show()
+    _draw_eval_plot(
+        bin_names_um, prec_um, rec_um, f1_um, ndet_um, ngt_um,
+        xlabel='GUV Size Range (µm)',
+        title=f'Precision / Recall / F1 by BBox Size (µm) — {modality} YOLOv11_{model_size}',
+        fig_num=f"Eval-um-{modality}-{model_size}",
+        legend_outside=True,
+    )
             
     
 
