@@ -560,7 +560,8 @@ class GUVDetectorGUI:
                         count_edge += 1
                     else:
                         count_inter += 1
-                    dim_list.append(max_dim * mu)
+                    dim = np.sqrt(max_dim**2 + min_dim**2) / np.sqrt(2)
+                    dim_list.append(dim * mu)
 
                 self.set_progress(idx, total_labels)
                 self.set_status(f"Analyzing {idx}/{total_labels}")
