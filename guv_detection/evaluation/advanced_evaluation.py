@@ -13,7 +13,26 @@ import matplotlib.pyplot as plt
 
 CONF_THRESH  = 0.25
 IOU_THRESH   = 0.5
-MU_PER_PX    = 0.339   # µm per pixel (Nikon)
+
+MU_PER_PX = {
+    "nikon_high": 0.120,   # high-magnification Nikon (quadrant tiles: _tl/_tr/_bl/_br)
+    "nikon_low":  0.339,   # low-magnification  Nikon (grid tiles: _A1…_D4)
+    "leica":      0.45,
+}
+
+_QUADRANT_SUFFIXES = {"_tl", "_tr", "_bl", "_br"}
+_GRID_ROW_LETTERS  = set("ABCD")
+
+
+def _get_mu(stem: str, is_leica: bool) -> float:
+    if is_leica:
+        return MU_PER_PX["leica"]
+    suffix = stem[-3:]
+    if suffix in _QUADRANT_SUFFIXES:
+        return MU_PER_PX["nikon_high"]
+    if len(suffix) == 3 and suffix[1] in _GRID_ROW_LETTERS and suffix[2].isdigit():
+        return MU_PER_PX["nikon_low"]
+    return MU_PER_PX["nikon_low"]   # fallback
 
 # ── Style constants ────────────────────────────────────────────────────────────
 FS_LABEL  = 14
@@ -25,7 +44,8 @@ FIGSIZE   = (12, 5)
 COLOR_P   = "#084594"   # dark blue  — Precision
 COLOR_R   = "#4292c6"   # mid blue   — Recall
 COLOR_F1  = "#9ecae1"   # light blue — F1
-COLOR_BAR = "#1b7837"   # test green — bars
+COLOR_BAR_NIKON = "#1b7837"   # dark green — Nikon bars
+COLOR_BAR_LEICA = "#7b2d8b"   # dark purple — Leica bars
 
 def yolo_to_xyxy(xc, yc, w, h, img_w, img_h):
     """Convert YOLO format (xc, yc, w, h) to (x1, y1, x2, y2) in pixels."""
@@ -86,17 +106,17 @@ def get_bin(area, bin_edges, bin_labels, last_label):
     return last_label
 
 
-def _guv_dim_um(box):
-    """Dataset formula: sqrt(max_dim² + min_dim²) / sqrt(2) * MU_PER_PX."""
+def _guv_dim_um(box, mu: float):
+    """Dataset formula: sqrt(max_dim² + min_dim²) / sqrt(2) * mu."""
     w = box[2] - box[0]
     h = box[3] - box[1]
     max_dim, min_dim = max(w, h), min(w, h)
-    return np.sqrt(max_dim**2 + min_dim**2) / np.sqrt(2) * MU_PER_PX
+    return np.sqrt(max_dim**2 + min_dim**2) / np.sqrt(2) * mu
 
 
 def _draw_eval_plot(bin_names, precisions, recalls, f1_scores,
                     num_detected, num_gt, xlabel, title, fig_num,
-                    legend_outside=False):
+                    legend_outside=False, color_bar=COLOR_BAR_NIKON):
     """Shared plotting routine for px and µm evaluation figures."""
     x        = np.arange(len(bin_names))
     width    = 0.35
@@ -121,18 +141,18 @@ def _draw_eval_plot(bin_names, precisions, recalls, f1_scores,
     # ── Count bars (secondary axis) ───────────────────────────────────────
     ax2 = ax1.twinx()
     bars_det = ax2.bar(x - width / 2, num_detected, width,
-                       color=COLOR_BAR, alpha=0.9, edgecolor='white', linewidth=0.5,
+                       color=color_bar, alpha=0.9, edgecolor='white', linewidth=0.5,
                        label='Detected GUV')
     bars_gt  = ax2.bar(x + width / 2, num_gt, width,
-                       color=COLOR_BAR, alpha=0.45, edgecolor='white', linewidth=0.5,
+                       color=color_bar, alpha=0.45, edgecolor='white', linewidth=0.5,
                        hatch='//', label='GT GUV')
 
     ax2.set_ylim(0, 1200)
-    ax2.set_ylabel('Number of GUV', fontsize=FS_LABEL, color=COLOR_BAR)
-    ax2.tick_params(axis='y', labelsize=FS_TICK, colors=COLOR_BAR)
+    ax2.set_ylabel('Number of GUV', fontsize=FS_LABEL, color=color_bar)
+    ax2.tick_params(axis='y', labelsize=FS_TICK, colors=color_bar)
     ax2.spines['top'].set_visible(False)
-    ax2.spines['right'].set_edgecolor(COLOR_BAR)
-    ax2.yaxis.grid(True, linestyle=':', linewidth=0.8, color=COLOR_BAR, alpha=0.3, zorder=0)
+    ax2.spines['right'].set_edgecolor(color_bar)
+    ax2.yaxis.grid(True, linestyle=':', linewidth=0.8, color=color_bar, alpha=0.3, zorder=0)
     ax2.set_axisbelow(True)
 
     # metric lines always on top of bars
@@ -162,6 +182,9 @@ def evaluate(folder, model_size, modality):
     assert os.path.isdir(label_dir), f"Missing labels folder: {label_dir}"
     assert os.path.isdir(pred_dir),  f"Missing predictions folder: {pred_dir}"
 
+    is_leica  = "leica" in folder.lower()
+    color_bar = COLOR_BAR_LEICA if is_leica else COLOR_BAR_NIKON
+
     image_paths = sorted(glob(os.path.join(image_dir, "*.jpg")) + glob(os.path.join(image_dir, "*.png")))
     image_names = [os.path.splitext(os.path.basename(p))[0] for p in image_paths]
 
@@ -170,10 +193,10 @@ def evaluate(folder, model_size, modality):
     px_labels = [f"{px_edges[i]}-{px_edges[i+1]}" for i in range(len(px_edges) - 1)]
     px_last   = ">100"
 
-    # µm bins  (formula: sqrt(max²+min²)/sqrt(2) * MU_PER_PX, Nikon 0.1205)
-    um_edges  = list(range(0, 55, 5))
+    # µm bins
+    um_edges  = list(range(0, 40, 5))
     um_labels = [f"{um_edges[i]}-{um_edges[i+1]}" for i in range(len(um_edges) - 1)]
-    um_last   = ">50"
+    um_last   = ">35"
 
     stats = {'TP': 0, 'FP': 0, 'FN': 0}
     stats_per_bin    = defaultdict(lambda: {'TP': 0, 'FP': 0, 'FN': 0, 'GT_total': 0})
@@ -187,19 +210,20 @@ def evaluate(folder, model_size, modality):
         img = Image.open(img_path)
         img_w, img_h = img.size
 
+        mu = _get_mu(img_name, is_leica)
+
         gt_path = os.path.join(label_dir, f"{img_name}.txt")
         pred_path = os.path.join(pred_dir, 'labels', f"{img_name}.txt")
 
         gt_boxes = read_gt_boxes(gt_path, img_w, img_h)
         pred_boxes = read_pred_boxes(pred_path, img_w, img_h)
 
-
         # GT bins (px and µm)
         for gb in gt_boxes:
             gb_w = gb[2] - gb[0]
             gb_h = gb[3] - gb[1]
             dim_px = (gb_w + gb_h) / 2
-            dim_um = _guv_dim_um(gb)
+            dim_um = _guv_dim_um(gb, mu)
             g_bin    = get_bin(dim_px, px_edges, px_labels, px_last)
             g_bin_um = get_bin(dim_um, um_edges, um_labels, um_last)
             stats_per_bin[g_bin]['GT_total']       += 1
@@ -211,7 +235,7 @@ def evaluate(folder, model_size, modality):
             p_w = pb[2] - pb[0]
             p_h = pb[3] - pb[1]
             dim_px = (p_w + p_h) / 2
-            dim_um = _guv_dim_um(pb)
+            dim_um = _guv_dim_um(pb, mu)
             p_bin    = get_bin(dim_px, px_edges, px_labels, px_last)
             p_bin_um = get_bin(dim_um, um_edges, um_labels, um_last)
 
@@ -242,7 +266,7 @@ def evaluate(folder, model_size, modality):
                 gb_w = gb[2] - gb[0]
                 gb_h = gb[3] - gb[1]
                 dim_px = (gb_w + gb_h) / 2
-                dim_um = _guv_dim_um(gb)
+                dim_um = _guv_dim_um(gb, mu)
                 g_bin    = get_bin(dim_px, px_edges, px_labels, px_last)
                 g_bin_um = get_bin(dim_um, um_edges, um_labels, um_last)
                 stats['FN'] += 1
@@ -292,6 +316,7 @@ def evaluate(folder, model_size, modality):
         xlabel='GUV Size Range (pixels)',
         title=f'Precision / Recall / F1 by BBox Size (px) — {modality} YOLOv11_{model_size}',
         fig_num=f"Eval-px-{modality}-{model_size}",
+        color_bar=color_bar,
     )
 
     # ── µm plot ───────────────────────────────────────────────────────────
@@ -310,6 +335,7 @@ def evaluate(folder, model_size, modality):
         title=f'Precision / Recall / F1 by BBox Size (µm) — {modality} YOLOv11_{model_size}',
         fig_num=f"Eval-um-{modality}-{model_size}",
         legend_outside=True,
+        color_bar=color_bar,
     )
             
     
@@ -319,9 +345,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Test a model on a folder of images")
     parser.add_argument("--model_size", type=str, default="n", help="size of YOLO model, e.g., n, s, m, l, x")
     parser.add_argument("--modality", type=str, default="rgb", help="Modality of the images: rgb or grey")
-    parser.add_argument("--folder", type=str, default="/media/angelo/OS/Users/lasal/OneDrive - Scuola Superiore Sant'Anna/PhD_notes/Liposomes detection/", 
-                        help="Path to the folder containing images")
+    parser.add_argument("--folder", type=str, default="/media/angelo/OS/Users/lasal/OneDrive - Scuola Superiore Sant'Anna/PhD_notes/Liposomes detection/",
+                        help="Path to the root folder (parent of DATA_training_*_txt)")
+    parser.add_argument("--subfolder", type=str, default="test",
+                        help="Subfolder inside DATA_training_{modality}_txt, e.g. 'test' or 'Leica-tot/test'")
     args = parser.parse_args()
 
-    folder = os.path.join(args.folder, f'DATA_training_{args.modality}_txt', 'test')
+    folder = os.path.join(args.folder, f'DATA_training_{args.modality}_txt', args.subfolder)
     evaluate(folder, args.model_size, args.modality)
