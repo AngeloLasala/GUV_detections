@@ -234,6 +234,12 @@ The figure below shows the evaluation of the **YOLOv11-nano** model trained on *
 
 ![Evaluation by GUV size (µm) — grey YOLOv11_n](guv_detection/images/Eval-um-grey-n.png)
 
+### Out-of-distribution generalisation — Leica
+
+To assess cross-domain generalisation, the same model (no retraining) was evaluated on Leica acquisitions, which differ from the training distribution in microscope optics, pixel size (0.45 µm/pixel), and image contrast. The figure below uses the same bin-wise protocol as above but with Leica calibration applied.
+
+![Out-of-distribution evaluation (Leica) — grey YOLOv11_n](guv_detection/images/Eval-um-grey-n_leica.png)
+
 <!-- To run the evaluation on your test set:
 
 ```bash
