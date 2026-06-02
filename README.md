@@ -220,6 +220,23 @@ The dataset folder used for training must be organized as follows:
 ```
 Each modality (e.g., `rgb`, `grey`) should contain its own DATA directory with the standard `train`, `val`, and `test` subfolders.
 
+### Training on Google Colab
+
+For GPU-accelerated training without a local GPU, two ready-to-use Colab notebooks are provided in `guv_detection/tools/`:
+
+| Notebook | Modality | Google Drive path |
+|---|---|---|
+| [`train_grey.ipynb`](guv_detection/tools/train_grey.ipynb) | Greyscale | `DATA_training_grey_txt/` |
+| [`train_rgb.ipynb`](guv_detection/tools/train_rgb.ipynb) | RGB | `DATA_training_rgb_txt/` |
+
+Both notebooks follow the same pipeline:
+1. Mount Google Drive and navigate to the dataset directory.
+2. Install Ultralytics (`pip install ultralytics`).
+3. Build YOLOv11-nano from YAML, load pretrained ImageNet weights, and fine-tune for 100 epochs at 640 × 640 px (`model.train(data="data.yaml", epochs=100, imgsz=640)`).
+4. Run inference on the test split and save labelled results to `runs/detect/predict*/`.
+
+Before opening a notebook, upload the `train/`, `val/`, and `test/` folders together with `data.yaml` to the corresponding Google Drive directory, then run all cells in order. Trained weights are saved under `runs/detect/trainX/weights/best.pt`.
+
 ## 📊 Evaluation
 
 Model performance is evaluated bin-wise by GUV size, using IoU-based matching (IoU ≥ 0.5) between predicted and ground-truth bounding boxes. For each size bin, Precision, Recall, and F1-score are computed alongside the raw detection counts.
