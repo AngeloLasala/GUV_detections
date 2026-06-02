@@ -234,6 +234,10 @@ The figure below shows the evaluation of the **YOLOv11-nano** model trained on *
 
 ![Evaluation by GUV size (µm) — grey YOLOv11_n](guv_detection/images/Eval-um-grey-n.png)
 
+The same evaluation expressed in **raw pixel units** is shown below. The model population is concentrated in the 20–50 px range; performance drops only for the smallest bin (0–10 px), where GUVs occupy fewer than ~10 pixels on a side and are inherently ambiguous. From 10 px upward, both Precision and Recall exceed 0.8 and remain stable across all size bins, confirming that the performance pattern is consistent regardless of the calibration factor applied.
+
+![Evaluation by GUV size (pixels) — grey YOLOv11_n](guv_detection/images/Eval-px-grey-n.png)
+
 ### Out-of-distribution generalisation — Leica
 
 To assess cross-domain generalisation, the same model (no retraining) was evaluated on Leica acquisitions, which differ from the training distribution in microscope optics, pixel size (0.45 µm/pixel), and image contrast. The figure below uses the same bin-wise protocol as above but with Leica calibration applied.
