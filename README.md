@@ -157,6 +157,9 @@ Again, **DO NOT click** on **Sync Storage** in this phase. For **Windows users**
 
 - Go to the **Project > Import**
 - Import a file  `import.json`
+  
+Then, the user can use Label Studio interface to edit the annotations: manually adding/deleting bounding boxes of GUVs and exporting the updated JSON file at the end of re-annotation process.
+After this step, run the code [analysis.py](https://github.com/AngeloLasala/GUV_detections/tree/main/guv_detection/pre_annotation) to obtain a more precise size distribution analysis. 
 
 ### How to create `import.json` file - Pre-annotation
 
