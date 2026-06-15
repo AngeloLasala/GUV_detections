@@ -279,4 +279,4 @@ The script expects a `predict_{model_size}/` folder inside the test split (gener
 
 The annotated dataset used to train and evaluate VesciScope will be available at the following repository:
 
-[GUV Dataset Repository](<link>)
+[GUV Dataset Repository](https://github.com/AngeloLasala/GUV_dataset)
