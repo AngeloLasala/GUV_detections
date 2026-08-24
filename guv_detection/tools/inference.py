@@ -63,8 +63,8 @@ def main(args):
                 else:
                     count_inter += 1
                 
-                dim = max_dim * args.mu_per_pixel
-                dim_list.append(dim)
+                dim = np.sqrt(max_dim**2 + min_dim**2) / np.sqrt(2)
+                dim_list.append(dim * args.mu_per_pixel)
     
     print(f"Total GUVs detected: {len(dim_list)}")
     print(f"Edge GUVs: {count_edge}, Inter GUVs: {count_inter}")
