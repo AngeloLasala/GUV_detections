@@ -1,0 +1,36 @@
+{
+  "Nikon": {
+    "n": {
+      "parameters_M": 2.5,
+      "RGB": { "Precision": 0.845, "Recall": 0.844, "mAP50": 0.875 },
+      "Grey": { "Precision": 0.868, "Recall": 0.842, "mAP50": 0.881 }
+    },
+    "s": {
+      "parameters_M": 9,
+      "RGB": { "Precision": 0.858, "Recall": 0.833, "mAP50": 0.866 },
+      "Grey": { "Precision": 0.856, "Recall": 0.847, "mAP50": 0.872 }
+    },
+    "m": {
+      "parameters_M": 20,
+      "RGB": { "Precision": 0.867, "Recall": 0.815, "mAP50": 0.863 },
+      "Grey": { "Precision": 0.853, "Recall": 0.832, "mAP50": 0.874 }
+    }
+  },
+  "Leica": {
+    "n": {
+      "parameters_M": 2.5,
+      "RGB": { "Precision": 0.319, "Recall": 0.105, "mAP50": 0.198 },
+      "Grey": { "Precision": 0.603, "Recall": 0.517, "mAP50": 0.514 }
+    },
+    "s": {
+      "parameters_M": 9,
+      "RGB": { "Precision": 0.205, "Recall": 0.115, "mAP50": 0.137 },
+      "Grey": { "Precision": 0.643, "Recall": 0.532, "mAP50": 0.525 }
+    },
+    "m": {
+      "parameters_M": 20,
+      "RGB": { "Precision": 0.157, "Recall": 0.200, "mAP50": 0.144 },
+      "Grey": { "Precision": 0.666, "Recall": 0.459, "mAP50": 0.519 }
+    }
+  }
+}
