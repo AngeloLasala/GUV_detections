@@ -10,12 +10,10 @@ from PIL import Image
 import numpy as np
 from collections import defaultdict
 import matplotlib.pyplot as plt
-from itertools import combinations
-from scipy.stats import norm, chi2, chi2_contingency, fisher_exact
 
 CONF_THRESH  = 0.25
 IOU_THRESH   = 0.5
-MIN_N_BIN    = 10   # minimum TP+FP (or TP+FN) for a bin to enter homogeneity/trend tests
+MIN_N_BIN    = 10   # minimum TP+FP (or TP+FN) for a bin to enter the bootstrap trend fit
 
 MU_PER_PX = {
     "nikon_high": 0.120,   # high-magnification Nikon (quadrant tiles: _tl/_tr/_bl/_br)
@@ -118,180 +116,12 @@ def _guv_dim_um(box, mu: float):
     return np.sqrt(max_dim**2 + min_dim**2) / np.sqrt(2) * mu
 
 
-def wilson_ci(k, n, confidence=0.95):
-    """Wilson score interval for a binomial proportion k/n."""
-    if n == 0:
-        return float('nan'), float('nan'), float('nan')
-    z = norm.ppf(1 - (1 - confidence) / 2)
-    phat = k / n
-    denom = 1 + z**2 / n
-    center = phat + z**2 / (2 * n)
-    margin = z * np.sqrt(phat * (1 - phat) / n + z**2 / (4 * n**2))
-    return phat, (center - margin) / denom, (center + margin) / denom
-
-
-def benjamini_hochberg(pvals, alpha=0.05):
-    """
-    Benjamini-Hochberg FDR correction for a family of p-values.
-    Returns (adjusted_pvals, reject) aligned to the input order.
-    """
-    pvals = np.asarray(pvals, dtype=float)
-    m = len(pvals)
-    order   = np.argsort(pvals)
-    ranked  = pvals[order]
-    adj_ranked = ranked * m / np.arange(1, m + 1)
-    adj_ranked = np.minimum.accumulate(adj_ranked[::-1])[::-1]  # enforce monotonicity
-    adj_ranked = np.clip(adj_ranked, 0, 1)
-    adjusted = np.empty(m)
-    adjusted[order] = adj_ranked
-    return adjusted, adjusted < alpha
-
-
-def cramers_v(chi2_stat, n, dof_table=1):
-    """
-    Effect size for a K x 2 contingency table (dof_table = min(rows-1, cols-1),
-    which is always 1 for a K x 2 table). Needed because a chi-square p-value
-    alone conflates statistical significance with practical relevance: with a
-    large N, even a trivial deviation from homogeneity becomes "significant".
-    Guideline (Cohen, valid for dof_table=1): <0.10 negligible, 0.10-0.30
-    small, 0.30-0.50 medium, >0.50 large.
-    """
-    if n <= 0:
-        return float('nan')
-    return float(np.sqrt(chi2_stat / (n * dof_table)))
-
-
-def _cramers_v_label(v):
-    if np.isnan(v):
-        return 'n/a'
-    if v < 0.10:
-        return 'negligible'
-    if v < 0.30:
-        return 'small'
-    if v < 0.50:
-        return 'medium'
-    return 'large'
-
-
-def homogeneity_test(success_counts, failure_counts, bin_names, alpha=0.05, min_n=MIN_N_BIN):
-    """
-    Test whether a proportion (P: TP/(TP+FP), or R: TP/(TP+FN)) is homogeneous
-    across size bins, using a (K x 2) contingency table of [success, failure].
-
-    Bins with fewer than `min_n` observations (success+failure) are dropped
-    first — a proportion estimated on a handful of trials carries no usable
-    information about homogeneity and can distort the chi-square statistic.
-    Uses a chi-square test of homogeneity by default, reporting Cramer's V as
-    an effect size alongside the p-value (large N makes the chi-square test
-    over-sensitive to trivial deviations, so the p-value alone is not enough).
-    If more than 20% of the table's expected cell counts fall below 5
-    (standard validity rule for chi-square), falls back to all-pairs Fisher
-    exact tests with Benjamini-Hochberg (FDR) correction, which additionally
-    identifies which specific bins differ from which.
-    """
-    success_counts = np.asarray(success_counts, dtype=float)
-    failure_counts = np.asarray(failure_counts, dtype=float)
-    n = success_counts + failure_counts
-    valid = n >= min_n
-    if valid.sum() < 2:
-        return {'method': 'insufficient_data'}
-
-    success_v = success_counts[valid]
-    failure_v = failure_counts[valid]
-    bins_v    = [b for b, ok in zip(bin_names, valid) if ok]
-
-    table = np.array([success_v, failure_v]).T  # K x 2
-    chi2_stat, p_chi2, dof, expected = chi2_contingency(table)
-    low_expected_frac = float(np.mean(expected < 5))
-    v = cramers_v(chi2_stat, table.sum(), dof_table=1)
-
-    result = {
-        'method': 'chi2', 'statistic': chi2_stat, 'dof': dof, 'p_value': p_chi2,
-        'cramers_v': v, 'low_expected_frac': low_expected_frac, 'pairwise': None, 'alpha': alpha,
-    }
-
-    if low_expected_frac > 0.2:
-        pairs, pvals = [], []
-        for (i, bi), (j, bj) in combinations(enumerate(bins_v), 2):
-            table_2x2 = [[success_v[i], failure_v[i]], [success_v[j], failure_v[j]]]
-            _, p_fisher = fisher_exact(table_2x2)
-            pairs.append((bi, bj))
-            pvals.append(p_fisher)
-        adjusted, reject = benjamini_hochberg(pvals, alpha=alpha)
-        result['method']   = 'fisher_pairwise_fdr'
-        result['pairwise'] = list(zip(pairs, pvals, adjusted, reject))
-
-    return result
-
-
-def cochran_armitage_trend(successes, totals, scores=None, min_n=MIN_N_BIN):
-    """
-    Cochran-Armitage trend test: tests whether a proportion (e.g. P or R)
-    changes monotonically with an ordered covariate (e.g. bin diameter),
-    which is a more specific and more powerful test than an unordered
-    chi-square/Fisher homogeneity test when the bins have a natural order.
-    Bins with fewer than `min_n` trials are dropped. Returns (z, p_value);
-    z > 0 means the proportion increases with the score (i.e. with diameter).
-    """
-    successes = np.asarray(successes, dtype=float)
-    totals    = np.asarray(totals, dtype=float)
-    valid = totals >= min_n
-    if valid.sum() < 2:
-        return float('nan'), float('nan')
-    successes = successes[valid]
-    totals    = totals[valid]
-    scores = np.arange(len(successes), dtype=float) if scores is None else np.asarray(scores, dtype=float)[valid]
-
-    N     = totals.sum()
-    p_bar = successes.sum() / N
-    t_bar = np.average(scores, weights=totals)
-    num   = np.sum(totals * (scores - t_bar) * (successes / totals - p_bar))
-    denom = p_bar * (1 - p_bar) * np.sum(totals * (scores - t_bar) ** 2)
-    if denom <= 0:
-        return float('nan'), float('nan')
-    z = num / np.sqrt(denom)
-    # z**2 ~ chi2(1) under H0; this is already the two-sided p-value (no extra *2).
-    p_value = 1 - chi2.cdf(z**2, df=1)
-    return z, p_value
-
-
 def _bin_score(label, width):
     """Numeric midpoint of a bin label like '10-20', or lo+width/2 for an open-ended '>100'."""
     if label.startswith('>'):
         return float(label[1:]) + width / 2
     lo, hi = label.split('-')
     return (float(lo) + float(hi)) / 2
-
-
-def _print_homogeneity(name, result):
-    if result['method'] == 'insufficient_data':
-        print(f"  Homogeneity test ({name}): insufficient data (fewer than 2 bins with n>={MIN_N_BIN}) — skipped")
-        return
-    v = result['cramers_v']
-    v_label = _cramers_v_label(v)
-    if result['method'] == 'chi2':
-        verdict = 'NOT homogeneous (p<0.05) -> systematic variation across bins' \
-                  if result['p_value'] < 0.05 else 'homogeneous (p>=0.05) -> consistent with sampling noise'
-        print(f"  Homogeneity test ({name}): chi2={result['statistic']:.3f}, dof={result['dof']}, "
-              f"p={result['p_value']:.4f}, Cramer's V={v:.3f} ({v_label}) -> {verdict}")
-    else:
-        print(f"  Homogeneity test ({name}): chi2 assumptions violated "
-              f"({result['low_expected_frac']*100:.0f}% of expected cell counts < 5), "
-              f"omnibus Cramer's V={v:.3f} ({v_label}) -> "
-              f"pairwise Fisher exact tests, Benjamini-Hochberg FDR corrected (alpha={result['alpha']}):")
-        for (b1, b2), p_raw, p_adj, sig in result['pairwise']:
-            flag = " *** DIFFERENT ***" if sig else ""
-            print(f"    {b1} vs {b2}: p_raw={p_raw:.4f}, p_adj={p_adj:.4f}{flag}")
-
-
-def _print_trend(name, z, p_value):
-    if np.isnan(z):
-        print(f"  Trend test ({name}): insufficient data — skipped")
-        return
-    direction = 'increasing' if z > 0 else 'decreasing'
-    verdict = f"significant {direction} trend with diameter (p<0.05)" if p_value < 0.05 \
-              else "no significant trend with diameter (p>=0.05)"
-    print(f"  Cochran-Armitage trend test ({name}): z={z:.3f}, p={p_value:.4f} -> {verdict}")
 
 
 def _fit_log_rho_trend(tp, fp, fn, scores):
@@ -333,17 +163,19 @@ def _observed_log_rho(tp, fp, fn, scores, bin_names):
     return scores[valid], log_rho, weights, names
 
 
-def bootstrap_rho(per_image_stats, bin_names, trend_bins, trend_scores, n_boot=2000, seed=42):
+def bootstrap_rho(per_image_stats, bin_names, trend_variants, n_boot=2000, seed=42):
     """
     Cluster bootstrap by image: resamples images with replacement (preserving
     within-image correlation between boxes) and, on each resample, recomputes
-    rho globally, rho per bin, and the OLS trend line (slope + intercept) of
-    log(rho) vs. the bin score restricted to `trend_bins`/`trend_scores` (a
-    fixed, pre-filtered subset — see MIN_N_BIN — so every replicate fits the
-    trend on the same physical bins). Also evaluates that trend line on a
-    grid spanning `trend_scores`, so a 95% pointwise CI band can be plotted
-    around the fit (see `_draw_rho_trend_plot`). Returns percentile (2.5/97.5)
-    summaries.
+    rho globally, rho per bin, and — for every entry in `trend_variants`
+    (label -> (trend_bins, trend_scores)) — the OLS trend line (slope +
+    intercept) of log(rho) vs. the bin score restricted to that bin subset.
+    Fitting several variants (e.g. "all bins" and "excl. smallest bin") inside
+    the same resampling pass means they share the same 2000 resamples instead
+    of each needing its own bootstrap run. Each variant's trend line is also
+    evaluated on a grid spanning its own trend_scores, so a 95% pointwise CI
+    band can be plotted around the fit (see `_draw_rho_trend_plot`). Returns
+    percentile (2.5/97.5) summaries.
     """
     rng = np.random.default_rng(seed)
     images = list(per_image_stats.keys())
@@ -351,8 +183,8 @@ def bootstrap_rho(per_image_stats, bin_names, trend_bins, trend_scores, n_boot=2
 
     boot_rho_global = np.full(n_boot, np.nan)
     boot_rho_bins   = {b: np.full(n_boot, np.nan) for b in bin_names}
-    boot_slope      = np.full(n_boot, np.nan)
-    boot_intercept  = np.full(n_boot, np.nan)
+    boot_slope      = {label: np.full(n_boot, np.nan) for label in trend_variants}
+    boot_intercept  = {label: np.full(n_boot, np.nan) for label in trend_variants}
 
     for i in range(n_boot):
         sample = rng.choice(images, size=n_img, replace=True)
@@ -383,10 +215,11 @@ def bootstrap_rho(per_image_stats, bin_names, trend_bins, trend_scores, n_boot=2
                 if r_b > 0:
                     boot_rho_bins[b][i] = p_b / r_b
 
-        tp_t = np.array([tp_bin[b] for b in trend_bins])
-        fp_t = np.array([fp_bin[b] for b in trend_bins])
-        fn_t = np.array([fn_bin[b] for b in trend_bins])
-        boot_slope[i], boot_intercept[i] = _fit_log_rho_trend(tp_t, fp_t, fn_t, trend_scores)
+        for label, (tb, ts) in trend_variants.items():
+            tp_t = np.array([tp_bin[b] for b in tb])
+            fp_t = np.array([fp_bin[b] for b in tb])
+            fn_t = np.array([fn_bin[b] for b in tb])
+            boot_slope[label][i], boot_intercept[label][i] = _fit_log_rho_trend(tp_t, fp_t, fn_t, ts)
 
     def summarize(arr):
         arr = arr[np.isfinite(arr)]
@@ -395,29 +228,35 @@ def bootstrap_rho(per_image_stats, bin_names, trend_bins, trend_scores, n_boot=2
         return {'mean': float(np.mean(arr)), 'ci_lo': float(np.percentile(arr, 2.5)),
                 'ci_hi': float(np.percentile(arr, 97.5)), 'n_valid': int(arr.size)}
 
-    # Pointwise 95% CI band for the fitted line, evaluated on a grid spanning
-    # trend_scores. Needs >=2 distinct scores and >=1 valid bootstrap fit.
-    trend_scores_arr = np.asarray(trend_scores, dtype=float)
-    valid_fit = np.isfinite(boot_slope) & np.isfinite(boot_intercept)
-    if trend_scores_arr.size >= 2 and valid_fit.sum() > 0:
-        x_grid  = np.linspace(trend_scores_arr.min(), trend_scores_arr.max(), 100)
-        y_preds = boot_slope[valid_fit, None] * x_grid[None, :] + boot_intercept[valid_fit, None]
-        trend_line = {
-            'x_grid': x_grid.tolist(),
-            'y_mean': np.mean(y_preds, axis=0).tolist(),
-            'y_lo':   np.percentile(y_preds, 2.5, axis=0).tolist(),
-            'y_hi':   np.percentile(y_preds, 97.5, axis=0).tolist(),
+    trends = {}
+    for label, (tb, ts) in trend_variants.items():
+        ts_arr = np.asarray(ts, dtype=float)
+        slope_arr, intercept_arr = boot_slope[label], boot_intercept[label]
+        valid_fit = np.isfinite(slope_arr) & np.isfinite(intercept_arr)
+        # Pointwise 95% CI band for the fitted line, evaluated on a grid
+        # spanning ts. Needs >=2 distinct scores and >=1 valid bootstrap fit.
+        if ts_arr.size >= 2 and valid_fit.sum() > 0:
+            x_grid  = np.linspace(ts_arr.min(), ts_arr.max(), 100)
+            y_preds = slope_arr[valid_fit, None] * x_grid[None, :] + intercept_arr[valid_fit, None]
+            trend_line = {
+                'x_grid': x_grid.tolist(),
+                'y_mean': np.mean(y_preds, axis=0).tolist(),
+                'y_lo':   np.percentile(y_preds, 2.5, axis=0).tolist(),
+                'y_hi':   np.percentile(y_preds, 97.5, axis=0).tolist(),
+            }
+        else:
+            trend_line = None
+        trends[label] = {
+            'bins': tb, 'scores': ts,
+            'slope': summarize(slope_arr), 'intercept': summarize(intercept_arr),
+            'trend_line': trend_line,
         }
-    else:
-        trend_line = None
 
     return {
         'n_boot': n_boot,
         'global': summarize(boot_rho_global),
         'per_bin': {b: summarize(boot_rho_bins[b]) for b in bin_names},
-        'trend_slope': summarize(boot_slope),
-        'trend_intercept': summarize(boot_intercept),
-        'trend_line': trend_line,
+        'trends': trends,
     }
 
 
@@ -433,14 +272,15 @@ def _print_bootstrap_rho(result):
                   f"(valid resamples: {r['n_valid']}/{n_boot})")
         else:
             print(f"    {b}: no valid resamples")
-    s = result['trend_slope']
-    if s['n_valid'] > 0:
-        excludes_zero = s['ci_lo'] > 0 or s['ci_hi'] < 0
-        verdict = 'excludes 0 -> significant trend' if excludes_zero else 'includes 0 -> no significant trend'
-        print(f"  Bootstrap trend slope of log(rho) vs. diameter (bins with n>={MIN_N_BIN}): "
-              f"mean={s['mean']:.4f}, 95% CI=[{s['ci_lo']:.4f}, {s['ci_hi']:.4f}] -> {verdict}")
-    else:
-        print("  Bootstrap trend slope of log(rho): insufficient data — skipped")
+    for label, t in result['trends'].items():
+        s = t['slope']
+        if s['n_valid'] > 0:
+            excludes_zero = s['ci_lo'] > 0 or s['ci_hi'] < 0
+            verdict = 'excludes 0 -> significant trend' if excludes_zero else 'includes 0 -> no significant trend'
+            print(f"  Bootstrap trend slope of log(rho) vs. diameter [{label}] (bins with n>={MIN_N_BIN}): "
+                  f"mean={s['mean']:.4f}, 95% CI=[{s['ci_lo']:.4f}, {s['ci_hi']:.4f}] -> {verdict}")
+        else:
+            print(f"  Bootstrap trend slope of log(rho) [{label}]: insufficient data — skipped")
 
 
 def _draw_eval_plot(bin_names, precisions, recalls, f1_scores, rho,
@@ -509,15 +349,16 @@ def _draw_eval_plot(bin_names, precisions, recalls, f1_scores, rho,
 
 
 def _draw_rho_trend_plot(obs_scores, obs_log_rho, obs_weights, obs_names,
-                         slope, intercept, boot_result, xlabel, title, fig_num):
+                         slope, intercept, trend_result, xlabel, title, fig_num):
     """
     log(rho) = log(P) - log(R) vs. bin diameter: observed per-bin points
     (marker area ~ TP+FP+FN in that bin), the OLS fit line (observed data),
     a shaded 95% CI band from the cluster-by-image bootstrap, a y=0
     reference (P=R), and an annotation box with the bootstrap slope + CI
     and the significance verdict (CI excludes 0 -> significant trend).
+    `trend_result` is one entry of `bootstrap_rho(...)['trends']`.
     """
-    trend_line = boot_result.get('trend_line')
+    trend_line = trend_result.get('trend_line')
     if trend_line is None:
         print(f"  [{title}] insufficient data for a trend-line plot — skipped")
         return
@@ -543,7 +384,7 @@ def _draw_rho_trend_plot(obs_scores, obs_log_rho, obs_weights, obs_names,
         ax.annotate(name, (xi, yi), textcoords="offset points", xytext=(0, 8),
                     ha='center', fontsize=FS_ANNOT)
 
-    s = boot_result['trend_slope']
+    s = trend_result['slope']
     excludes_zero = np.isfinite(s['ci_lo']) and (s['ci_lo'] > 0 or s['ci_hi'] < 0)
     verdict = 'significant trend (CI excludes 0)' if excludes_zero else 'no significant trend (CI includes 0)'
     ax.text(0.02, 0.02,
@@ -563,6 +404,49 @@ def _draw_rho_trend_plot(obs_scores, obs_log_rho, obs_weights, obs_names,
     # plt.title(title, fontsize=FS_LABEL + 2)
     plt.tight_layout()
     plt.show()
+
+
+def _run_rho_trend_analysis(per_image_stats, bin_names, tp_arr, fp_arr, fn_arr, scores,
+                            unit_label, xlabel, modality, model_size):
+    """
+    Bootstrap + plot the log(rho) vs. diameter trend, in two variants by
+    default: using all bins that pass MIN_N_BIN, and excluding the smallest
+    (leftmost) qualifying bin — the smallest liposomes are the ones most
+    exposed to detection/tiling artifacts, so it's worth checking whether
+    that single bin is driving the trend. Both variants are fit inside the
+    same bootstrap resampling pass (see bootstrap_rho).
+    """
+    trend_mask   = (tp_arr + fp_arr >= MIN_N_BIN) & (tp_arr + fn_arr >= MIN_N_BIN)
+    trend_bins   = [b for b, ok in zip(bin_names, trend_mask) if ok]
+    trend_scores = scores[trend_mask]
+    tp_t, fp_t, fn_t = tp_arr[trend_mask], fp_arr[trend_mask], fn_arr[trend_mask]
+
+    trend_variants = {'all bins': (trend_bins, trend_scores)}
+    if len(trend_bins) >= 3:
+        trend_variants['excl. smallest bin'] = (trend_bins[1:], trend_scores[1:])
+
+    boot_result = bootstrap_rho(per_image_stats, bin_names, trend_variants)
+    print(f"Bootstrap evaluation, cluster-by-image ({unit_label} bins):")
+    _print_bootstrap_rho(boot_result)
+    print()
+
+    for label, (tb, ts) in trend_variants.items():
+        if label == 'all bins':
+            tpv, fpv, fnv = tp_t, fp_t, fn_t
+        else:
+            tpv, fpv, fnv = tp_t[1:], fp_t[1:], fn_t[1:]
+
+        slope, intercept = _fit_log_rho_trend(tpv, fpv, fnv, ts)
+        obs_scores, obs_logrho, obs_w, obs_names = _observed_log_rho(tpv, fpv, fnv, ts, tb)
+        fig_tag = 'all' if label == 'all bins' else 'exclsmallest'
+        title_suffix = '' if label == 'all bins' else ' (excl. smallest bin)'
+        _draw_rho_trend_plot(
+            obs_scores, obs_logrho, obs_w, obs_names, slope, intercept, boot_result['trends'][label],
+            xlabel=xlabel,
+            title=f'log(ρ) vs BBox Size trend ({unit_label}){title_suffix} — {modality} YOLOv11_{model_size}',
+            fig_num=f"RhoTrend-{unit_label}-{modality}-{model_size}-{fig_tag}",
+        )
+
 
 def evaluate(folder, model_size, modality):
     image_dir = os.path.join(folder, 'images')
@@ -718,41 +602,19 @@ def evaluate(folder, model_size, modality):
     print(f"Total GT: {sum(num_gt)}, Total Detected: {sum(num_detected)}\n")
     print("Bin-wise Evaluation (pixels):")
     for j in range(len(bin_names)):
-        _, p_lo, p_hi = wilson_ci(tp_arr[j], tp_arr[j] + fp_arr[j])
-        _, r_lo, r_hi = wilson_ci(tp_arr[j], tp_arr[j] + fn_arr[j])
         print(f"  Bin {bin_names[j]}: GT={num_gt[j]}, Det={num_detected[j]}, "
-              f"P={precisions[j]:.3f} [{p_lo:.3f}-{p_hi:.3f}], "
-              f"R={recalls[j]:.3f} [{r_lo:.3f}-{r_hi:.3f}], "
-              f"F1={f1_scores[j]:.3f}, rho={rhos[j]:.3f}")
+              f"P={precisions[j]:.3f}, R={recalls[j]:.3f}, F1={f1_scores[j]:.3f}, rho={rhos[j]:.3f}")
     print(f"Overall AP (px): {compute_ap(recalls, precisions):.4f}")
-    _print_homogeneity("Precision, px bins: TP vs FP", homogeneity_test(tp_arr, fp_arr, bin_names))
-    _print_homogeneity("Recall, px bins: TP vs FN", homogeneity_test(tp_arr, fn_arr, bin_names))
     px_scores = np.array([_bin_score(b, 10) for b in bin_names])
-    _print_trend("Precision, px bins", *cochran_armitage_trend(tp_arr, tp_arr + fp_arr, scores=px_scores))
-    _print_trend("Recall, px bins",    *cochran_armitage_trend(tp_arr, tp_arr + fn_arr, scores=px_scores))
     print()
 
     # ── Bootstrap on rho (px bins) — secondary/diagnostic axis; note that   ──
     # ── mu_per_px differs across acquisition sources, so a "px bin" mixes   ──
     # ── physically different diameters if the test set spans several scopes ──
-    trend_mask_px   = (tp_arr + fp_arr >= MIN_N_BIN) & (tp_arr + fn_arr >= MIN_N_BIN)
-    trend_bins_px   = [b for b, ok in zip(bin_names, trend_mask_px) if ok]
-    trend_scores_px = px_scores[trend_mask_px]
-    boot_result_px  = bootstrap_rho(per_image_stats_px, bin_names, trend_bins_px, trend_scores_px)
-    print("Bootstrap evaluation, cluster-by-image (px bins):")
-    _print_bootstrap_rho(boot_result_px)
-    print()
-
-    slope_px, intercept_px = _fit_log_rho_trend(
-        tp_arr[trend_mask_px], fp_arr[trend_mask_px], fn_arr[trend_mask_px], trend_scores_px)
-    obs_scores_px, obs_logrho_px, obs_w_px, obs_names_px = _observed_log_rho(
-        tp_arr[trend_mask_px], fp_arr[trend_mask_px], fn_arr[trend_mask_px],
-        trend_scores_px, trend_bins_px)
-    _draw_rho_trend_plot(
-        obs_scores_px, obs_logrho_px, obs_w_px, obs_names_px, slope_px, intercept_px, boot_result_px,
-        xlabel='GUV Size Range midpoint (pixels)',
-        title=f'log(ρ) vs BBox Size trend (px) — {modality} YOLOv11_{model_size}',
-        fig_num=f"RhoTrend-px-{modality}-{model_size}",
+    _run_rho_trend_analysis(
+        per_image_stats_px, bin_names, tp_arr, fp_arr, fn_arr, px_scores,
+        unit_label='px', xlabel='GUV Size Range midpoint (pixels)',
+        modality=modality, model_size=model_size,
     )
 
     _draw_eval_plot(
@@ -772,40 +634,18 @@ def evaluate(folder, model_size, modality):
 
     print("Bin-wise Evaluation (µm):")
     for j in range(len(bin_names_um)):
-        _, p_lo, p_hi = wilson_ci(tp_um[j], tp_um[j] + fp_um[j])
-        _, r_lo, r_hi = wilson_ci(tp_um[j], tp_um[j] + fn_um[j])
         print(f"  Bin {bin_names_um[j]} µm: GT={ngt_um[j]}, Det={ndet_um[j]}, "
-              f"P={prec_um[j]:.3f} [{p_lo:.3f}-{p_hi:.3f}], "
-              f"R={rec_um[j]:.3f} [{r_lo:.3f}-{r_hi:.3f}], "
-              f"F1={f1_um[j]:.3f}, rho={rho_um[j]:.3f}")
+              f"P={prec_um[j]:.3f}, R={rec_um[j]:.3f}, F1={f1_um[j]:.3f}, rho={rho_um[j]:.3f}")
     print(f"Overall AP (µm): {compute_ap(rec_um, prec_um):.4f}")
-    _print_homogeneity("Precision, µm bins: TP vs FP", homogeneity_test(tp_um, fp_um, bin_names_um))
-    _print_homogeneity("Recall, µm bins: TP vs FN", homogeneity_test(tp_um, fn_um, bin_names_um))
     um_scores = np.array([_bin_score(b, 5) for b in bin_names_um])
-    _print_trend("Precision, µm bins", *cochran_armitage_trend(tp_um, tp_um + fp_um, scores=um_scores))
-    _print_trend("Recall, µm bins",    *cochran_armitage_trend(tp_um, tp_um + fn_um, scores=um_scores))
     print()
 
     # ── Bootstrap on rho (µm bins) — the physically meaningful axis, since   ──
     # ── mu_per_px differs across acquisition sources (Leica/Nikon high/low)  ──
-    trend_mask_um   = (tp_um + fp_um >= MIN_N_BIN) & (tp_um + fn_um >= MIN_N_BIN)
-    trend_bins_um   = [b for b, ok in zip(bin_names_um, trend_mask_um) if ok]
-    trend_scores_um = um_scores[trend_mask_um]
-    boot_result_um  = bootstrap_rho(per_image_stats_um, bin_names_um, trend_bins_um, trend_scores_um)
-    print("Bootstrap evaluation, cluster-by-image (µm bins):")
-    _print_bootstrap_rho(boot_result_um)
-    print()
-
-    slope_um, intercept_um = _fit_log_rho_trend(
-        tp_um[trend_mask_um], fp_um[trend_mask_um], fn_um[trend_mask_um], trend_scores_um)
-    obs_scores_um, obs_logrho_um, obs_w_um, obs_names_um = _observed_log_rho(
-        tp_um[trend_mask_um], fp_um[trend_mask_um], fn_um[trend_mask_um],
-        trend_scores_um, trend_bins_um)
-    _draw_rho_trend_plot(
-        obs_scores_um, obs_logrho_um, obs_w_um, obs_names_um, slope_um, intercept_um, boot_result_um,
-        xlabel='GUV Size Range midpoint (µm)',
-        title=f'log(ρ) vs BBox Size trend (µm) — {modality} YOLOv11_{model_size}',
-        fig_num=f"RhoTrend-um-{modality}-{model_size}",
+    _run_rho_trend_analysis(
+        per_image_stats_um, bin_names_um, tp_um, fp_um, fn_um, um_scores,
+        unit_label='µm', xlabel='GUV Size Range midpoint (µm)',
+        modality=modality, model_size=model_size,
     )
 
     _draw_eval_plot(
