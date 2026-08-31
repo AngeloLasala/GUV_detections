@@ -126,7 +126,7 @@ def _bin_score(label, width):
 
 def _fit_log_rho_trend(tp, fp, fn, scores):
     """
-    OLS slope+intercept of log(rho) = log(P) - log(R) vs. bin score, over
+    Linear regression slope+intercept of log(rho) = log(P) - log(R) vs. bin score, over
     bins with TP > 0. Only meant to be called once per bootstrap resample
     (see bootstrap_rho): fitting on raw resampled counts, rather than on an
     analytic combination of Var(logP) and Var(logR), sidesteps having to
@@ -168,7 +168,7 @@ def bootstrap_rho(per_image_stats, bin_names, trend_variants, n_boot=2000, seed=
     Cluster bootstrap by image: resamples images with replacement (preserving
     within-image correlation between boxes) and, on each resample, recomputes
     rho globally, rho per bin, and — for every entry in `trend_variants`
-    (label -> (trend_bins, trend_scores)) — the OLS trend line (slope +
+    (label -> (trend_bins, trend_scores)) — the linear regression trend line (slope +
     intercept) of log(rho) vs. the bin score restricted to that bin subset.
     Fitting several variants (e.g. "all bins" and "excl. smallest bin") inside
     the same resampling pass means they share the same 2000 resamples instead
@@ -352,7 +352,7 @@ def _draw_rho_trend_plot(obs_scores, obs_log_rho, obs_weights, obs_names,
                          slope, intercept, trend_result, xlabel, title, fig_num):
     """
     log(rho) = log(P) - log(R) vs. bin diameter: observed per-bin points
-    (marker area ~ TP+FP+FN in that bin), the OLS fit line (observed data),
+    (marker area ~ TP+FP+FN in that bin), the linear regression fit line (observed data),
     a shaded 95% CI band from the cluster-by-image bootstrap, a y=0
     reference (P=R), and an annotation box with the bootstrap slope + CI
     and the significance verdict (CI excludes 0 -> significant trend).
@@ -372,7 +372,7 @@ def _draw_rho_trend_plot(obs_scores, obs_log_rho, obs_weights, obs_names,
     ax.fill_between(x_grid, y_lo, y_hi, color=COLOR_RHO, alpha=0.15,
                      label='95% CI (cluster bootstrap by image)', zorder=1)
     ax.plot(x_grid, slope * x_grid + intercept, color=COLOR_RHO, linewidth=2,
-             zorder=3, label=f'OLS fit (slope={slope:.4f})')
+             zorder=3, label=f'Linear regression fit (slope={slope:.4f})')
     ax.axhline(0, color='#888888', linestyle=':', linewidth=1.2, zorder=2,
                label='log(ρ)=0  (P=R)')
 
