@@ -292,7 +292,7 @@ class RoseCheck:
 
 
 class CalibrationWindow:
-    """Modal window: click 2 points, enter real distance (um) -> returns mu_per_pixel"""
+    """Modal window: click 2 points, enter real distance (µm) -> returns mu_per_pixel"""
     def __init__(self, parent, image_path, image_name, default_mu):
         self.top = tk.Toplevel(parent)
         self.top.title(f"Calibrate — {image_name}")
@@ -351,7 +351,7 @@ class CalibrationWindow:
                   text="Click TWO points on the image to define a known distance",
                   style="CalTitle.TLabel").pack(anchor=tk.W)
         ttk.Label(steps.inner,
-                  text="Then enter the REAL distance in um and press Calculate",
+                  text="Then enter the REAL distance in µm and press Calculate",
                   style="Hint.TLabel").pack(anchor=tk.W, pady=(3, 0))
 
         canvas_card = card(body, padding=10)
@@ -375,7 +375,7 @@ class CalibrationWindow:
         self.info_label = ttk.Label(cin, text="Click FIRST point…", style="CalInfo.TLabel")
         self.info_label.grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=(0, 12))
 
-        ttk.Label(cin, text="Real distance (um)", style="Field.TLabel").grid(
+        ttk.Label(cin, text="Real distance (µm)", style="Field.TLabel").grid(
             row=1, column=0, sticky=tk.W, padx=(0, 10))
         self.distance_entry = ttk.Entry(cin, width=14, font=(self.fam, 11))
         self.distance_entry.grid(row=1, column=1, sticky=tk.W)
@@ -432,7 +432,7 @@ class CalibrationWindow:
                 raise ValueError("Distance must be > 0")
             self.mu_per_pixel = real_distance / self.pixel_distance
             self.info_label.config(
-                text=f"Calibration: {self.mu_per_pixel:.4f} um/pixel",
+                text=f"Calibration: {self.mu_per_pixel:.4f} µm/pixel",
                 foreground=C["deep"])
             self.done_button.config(state="normal")
         except Exception as e:
@@ -555,7 +555,7 @@ class GUVDetectorGUI:
         ttk.Entry(s, textvariable=self.conf_thresh, width=12, font=(self.fam, 10)).grid(
             row=7, column=1, sticky=tk.W, pady=5)
 
-        ttk.Label(s, text="um/pixel", style="Field.TLabel").grid(
+        ttk.Label(s, text="µm/pixel", style="Field.TLabel").grid(
             row=8, column=0, sticky=tk.W, padx=(0, 12), pady=5)
         ttk.Entry(s, textvariable=self.mu_per_pixel, width=12, font=(self.fam, 10)).grid(
             row=8, column=1, sticky=tk.W, pady=5)
@@ -930,7 +930,7 @@ class GUVDetectorGUI:
                 x = np.linspace(0, max(dim_list), 1000)
                 pdf = lognorm.pdf(x, shape, loc=loc, scale=scale)
                 ax.plot(x, pdf, color=C["ink"], linestyle='-', linewidth=3,
-                        label=(f'Log-normal fit\nµm={mu_ln:.2f}, sigma={sigma_ln:.2f}\n'
+                        label=(f'Log-normal fit\nµm={mu_ln:.2f}, σ={sigma_ln:.2f}\n'
                                f'Total GUVs: {len(dim_list)}'))
             ax.set_xlabel('GUV Diameter (µm)', fontsize=20, color=C["ink"])
             ax.set_ylabel('Density of GUVs', fontsize=20, color=C["ink"])
@@ -964,7 +964,7 @@ class GUVDetectorGUI:
             self.append_result(f"Total GUVs detected: {len(arr)}")
             self.append_result(f"Edge: {count_edge}  |  Interior: {count_inter}")
             self.append_result(f"Median: {median:.2f} µm  Q1: {q1:.2f} µm  Q3: {q3:.2f} µm")
-            self.append_result(f"Log-normal  µm={mu_ln:.2f}, sigma={sigma_ln:.2f}")
+            self.append_result(f"Log-normal  µm={mu_ln:.2f}, σ={sigma_ln:.2f}")
             self.append_result(f"Calibration: {calib:.4f} µm/pixel (global)")
             self.append_result(f"Plot saved:  {plot_path}")
 
@@ -1153,7 +1153,7 @@ class GUVDetectorGUI:
             x = np.linspace(0, max(dim_list), 1000)
             ax.plot(x, lognorm.pdf(x, shape, loc=loc, scale=scale), color=C["ink"],
                     linestyle='-', linewidth=3,
-                    label=(f'Log-normal fit\nµm={mu_ln:.2f}, sigma={sigma_ln:.2f}\n'
+                    label=(f'Log-normal fit\nµm={mu_ln:.2f}, σ={sigma_ln:.2f}\n'
                            f'Total GUVs: {len(dim_list)}'))
         ax.set_xlabel('GUV Diameter (µm)', fontsize=20, color=C["ink"])
         ax.set_ylabel('Density of GUVs', fontsize=20, color=C["ink"])

@@ -45,7 +45,9 @@ FIGSIZE   = (12, 5)
 COLOR_P   = "#084594"   # dark blue  — Precision
 COLOR_R   = "#4292c6"   # mid blue   — Recall
 COLOR_F1  = "#9ecae1"   # light blue — F1
-COLOR_RHO = "red"       # red        — rho = P/R correction factor
+COLOR_RHO = "red"       # red        — rho = P/R correction factor, all bins
+COLOR_RHO_EXCL = "darkorange"  # orange — rho = P/R correction factor, excl. smallest bin
+COLOR_OBS = "brown"     # brown      — observed per-bin scatter points
 COLOR_BAR_NIKON = "#1b7837"   # dark green — Nikon bars
 COLOR_BAR_LEICA = "#7b2d8b"   # dark purple — Leica bars
 
@@ -349,47 +351,61 @@ def _draw_eval_plot(bin_names, precisions, recalls, f1_scores, rho,
 
 
 def _draw_rho_trend_plot(obs_scores, obs_log_rho, obs_weights, obs_names,
-                         slope, intercept, trend_result, xlabel, title, fig_num):
+                         variants, xlabel, title, fig_num):
     """
-    log(rho) = log(P) - log(R) vs. bin diameter: observed per-bin points
-    (marker area ~ TP+FP+FN in that bin), the linear regression fit line (observed data),
-    a shaded 95% CI band from the cluster-by-image bootstrap, a y=0
-    reference (P=R), and an annotation box with the bootstrap slope + CI
-    and the significance verdict (CI excludes 0 -> significant trend).
-    `trend_result` is one entry of `bootstrap_rho(...)['trends']`.
-    """
-    trend_line = trend_result.get('trend_line')
-    if trend_line is None:
-        print(f"  [{title}] insufficient data for a trend-line plot — skipped")
-        return
+    log(rho) = log(P) - log(R) vs. bin diameter, with one or more trend-fit
+    variants overlaid on the same axes (e.g. "all bins" vs. "excl. smallest
+    bin"), each in its own color, sharing one observed-points scatter
+    (marker area ~ TP+FP+FN in that bin) and one legend/annotation box.
 
+    `variants` is a list of dicts, each with:
+        'label'        : str, shown in the legend and annotation box
+        'color'        : matplotlib color for that variant's fit line + CI band
+        'slope'        : float, observed-data regression slope
+        'intercept'    : float, observed-data regression intercept
+        'rho'          : float, pooled rho (P/R) over the bins this variant fits on
+        'trend_result' : one entry of `bootstrap_rho(...)['trends']`
+    """
     fig, ax = plt.subplots(figsize=FIGSIZE, num=fig_num)
 
-    x_grid = np.asarray(trend_line['x_grid'])
-    y_lo   = np.asarray(trend_line['y_lo'])
-    y_hi   = np.asarray(trend_line['y_hi'])
+    summary_lines = []
+    any_plotted = False
+    for v in variants:
+        trend_line = v['trend_result'].get('trend_line')
+        if trend_line is None:
+            print(f"  [{title}] insufficient data for variant '{v['label']}' — skipped")
+            continue
+        any_plotted = True
 
-    ax.fill_between(x_grid, y_lo, y_hi, color=COLOR_RHO, alpha=0.15,
-                     label='95% CI (cluster bootstrap by image)', zorder=1)
-    ax.plot(x_grid, slope * x_grid + intercept, color=COLOR_RHO, linewidth=2,
-             zorder=3, label=f'Linear regression fit (slope={slope:.4f})')
-    ax.axhline(0, color='#888888', linestyle=':', linewidth=1.2, zorder=2,
-               label='log(ρ)=0  (P=R)')
+        x_grid = np.asarray(trend_line['x_grid'])
+        y_lo   = np.asarray(trend_line['y_lo'])
+        y_hi   = np.asarray(trend_line['y_hi'])
+
+        ax.fill_between(x_grid, y_lo, y_hi, color=v['color'], alpha=0.08, zorder=1)
+        ax.plot(x_grid, v['slope'] * x_grid + v['intercept'], color=v['color'], linewidth=3,
+                 zorder=3, label=v['label'])
+
+        s = v['trend_result']['slope']
+        excludes_zero = np.isfinite(s['ci_lo']) and (s['ci_lo'] > 0 or s['ci_hi'] < 0)
+        verdict = 'significant' if excludes_zero else 'not significant'
+        summary_lines.append(
+            f"{v['label']}: slope={s['mean']:.4f}  95% CI [{s['ci_lo']:.4f}, {s['ci_hi']:.4f}] -> {verdict}, "
+            f"ρ={v['rho']:.3f}")
+
+    if not any_plotted:
+        print(f"  [{title}] insufficient data for a trend-line plot — skipped")
+        plt.close(fig)
+        return
 
     obs_weights = np.asarray(obs_weights, dtype=float)
     sizes = 40 + 260 * (obs_weights / obs_weights.max()) if obs_weights.max() > 0 else 60
-    ax.scatter(obs_scores, obs_log_rho, s=sizes, color=COLOR_P, edgecolor='white',
+    ax.scatter(obs_scores, obs_log_rho, s=sizes, color=COLOR_OBS, edgecolor='white',
                linewidth=0.8, zorder=5, label='Observed bins (size ~ N)')
     for xi, yi, name in zip(obs_scores, obs_log_rho, obs_names):
         ax.annotate(name, (xi, yi), textcoords="offset points", xytext=(0, 8),
                     ha='center', fontsize=FS_ANNOT)
 
-    s = trend_result['slope']
-    excludes_zero = np.isfinite(s['ci_lo']) and (s['ci_lo'] > 0 or s['ci_hi'] < 0)
-    verdict = 'significant trend (CI excludes 0)' if excludes_zero else 'no significant trend (CI includes 0)'
-    ax.text(0.02, 0.02,
-            f"Bootstrap slope: {s['mean']:.4f}  95% CI [{s['ci_lo']:.4f}, {s['ci_hi']:.4f}]\n"
-            f"{verdict}  (n_boot valid = {s['n_valid']})",
+    ax.text(0.02, 0.02, "\n".join(summary_lines),
             transform=ax.transAxes, fontsize=FS_ANNOT + 2, va='bottom', ha='left',
             bbox=dict(boxstyle='round', facecolor='white', alpha=0.85, edgecolor='#cccccc'))
 
@@ -414,7 +430,8 @@ def _run_rho_trend_analysis(per_image_stats, bin_names, tp_arr, fp_arr, fn_arr, 
     (leftmost) qualifying bin — the smallest liposomes are the ones most
     exposed to detection/tiling artifacts, so it's worth checking whether
     that single bin is driving the trend. Both variants are fit inside the
-    same bootstrap resampling pass (see bootstrap_rho).
+    same bootstrap resampling pass (see bootstrap_rho) and drawn together on
+    a single plot (different color per fit), so they're directly comparable.
     """
     trend_mask   = (tp_arr + fp_arr >= MIN_N_BIN) & (tp_arr + fn_arr >= MIN_N_BIN)
     trend_bins   = [b for b, ok in zip(bin_names, trend_mask) if ok]
@@ -430,22 +447,45 @@ def _run_rho_trend_analysis(per_image_stats, bin_names, tp_arr, fp_arr, fn_arr, 
     _print_bootstrap_rho(boot_result)
     print()
 
+    # Observed points always come from the full ("all bins") set — the
+    # "excl. smallest bin" fit is overlaid on the very same scatter, just
+    # computed without the leftmost point, so both fits stay comparable
+    # against one shared set of dots.
+    obs_scores, obs_logrho, obs_w, obs_names = _observed_log_rho(tp_t, fp_t, fn_t, trend_scores, trend_bins)
+
+    variant_colors = {'all bins': COLOR_RHO, 'excl. smallest bin': COLOR_RHO_EXCL}
+    variant_display_labels = {'all bins': 'all bins', 'excl. smallest bin': 'w/o smallest'}
+    variants = []
     for label, (tb, ts) in trend_variants.items():
         if label == 'all bins':
             tpv, fpv, fnv = tp_t, fp_t, fn_t
         else:
             tpv, fpv, fnv = tp_t[1:], fp_t[1:], fn_t[1:]
-
         slope, intercept = _fit_log_rho_trend(tpv, fpv, fnv, ts)
-        obs_scores, obs_logrho, obs_w, obs_names = _observed_log_rho(tpv, fpv, fnv, ts, tb)
-        fig_tag = 'all' if label == 'all bins' else 'exclsmallest'
-        title_suffix = '' if label == 'all bins' else ' (excl. smallest bin)'
-        _draw_rho_trend_plot(
-            obs_scores, obs_logrho, obs_w, obs_names, slope, intercept, boot_result['trends'][label],
-            xlabel=xlabel,
-            title=f'log(ρ) vs BBox Size trend ({unit_label}){title_suffix} — {modality} YOLOv11_{model_size}',
-            fig_num=f"RhoTrend-{unit_label}-{modality}-{model_size}-{fig_tag}",
-        )
+
+        # Pooled rho (P/R) over just the bins this variant fits on — differs
+        # between variants because "excl. smallest bin" drops that bin's
+        # TP/FP/FN from the pool entirely (not the same as global rho).
+        tpv_sum, fpv_sum, fnv_sum = float(np.sum(tpv)), float(np.sum(fpv)), float(np.sum(fnv))
+        p_v = tpv_sum / (tpv_sum + fpv_sum) if (tpv_sum + fpv_sum) > 0 else 0.0
+        r_v = tpv_sum / (tpv_sum + fnv_sum) if (tpv_sum + fnv_sum) > 0 else 0.0
+        rho_v = p_v / r_v if r_v > 0 else float('nan')
+
+        variants.append({
+            'label': variant_display_labels[label],
+            'color': variant_colors[label],
+            'slope': slope,
+            'intercept': intercept,
+            'rho': rho_v,
+            'trend_result': boot_result['trends'][label],
+        })
+
+    _draw_rho_trend_plot(
+        obs_scores, obs_logrho, obs_w, obs_names, variants,
+        xlabel=xlabel,
+        title=f'log(ρ) vs BBox Size trend ({unit_label}) — {modality} YOLOv11_{model_size}',
+        fig_num=f"RhoTrend-{unit_label}-{modality}-{model_size}",
+    )
 
 
 def evaluate(folder, model_size, modality):
