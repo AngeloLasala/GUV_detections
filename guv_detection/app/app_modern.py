@@ -761,10 +761,10 @@ class GUVDetectorGUI:
                     raise RuntimeError("Calibration cancelled by user.")
 
                 self.append_result(
-                    f"Calibration: {calib:.4f} um/pixel — applied to ALL images.")
+                    f"Calibration: {calib:.4f} µm/pixel — applied to ALL images.")
             else:
                 calib = self.mu_per_pixel.get()
-                self.append_result(f"Using default calibration: {calib} um/pixel")
+                self.append_result(f"Using default calibration: {calib} µm/pixel")
 
             self.calibration_data = {fname: calib for _, fname in valid_sources}
 
@@ -921,18 +921,18 @@ class GUVDetectorGUI:
             ax.hist(dim_list, bins=bins, color=C["primary"], alpha=0.55, density=True,
                     edgecolor=C["surface"])
             ax.axvline(median, color=C["deep"], linestyle='dashed', linewidth=3,
-                       label=f'Median: {median:.2f} um')
+                       label=f'Median: {median:.2f} µm')
             ax.axvline(q1, color=C["primary_dark"], linestyle='dashed', linewidth=3,
-                       label=f'Q1: {q1:.2f} um')
+                       label=f'Q1: {q1:.2f} µm')
             ax.axvline(q3, color=C["primary_dark"], linestyle='dashed', linewidth=3,
-                       label=f'Q3: {q3:.2f} um')
+                       label=f'Q3: {q3:.2f} µm')
             if shape is not None:
                 x = np.linspace(0, max(dim_list), 1000)
                 pdf = lognorm.pdf(x, shape, loc=loc, scale=scale)
                 ax.plot(x, pdf, color=C["ink"], linestyle='-', linewidth=3,
-                        label=(f'Log-normal fit\nmu={mu_ln:.2f}, sigma={sigma_ln:.2f}\n'
+                        label=(f'Log-normal fit\nµm={mu_ln:.2f}, sigma={sigma_ln:.2f}\n'
                                f'Total GUVs: {len(dim_list)}'))
-            ax.set_xlabel('GUV Diameter (um)', fontsize=20, color=C["ink"])
+            ax.set_xlabel('GUV Diameter (µm)', fontsize=20, color=C["ink"])
             ax.set_ylabel('Density of GUVs', fontsize=20, color=C["ink"])
             ax.set_title(f"{self.current_folder_name} (global)", fontsize=16, color=C["deep"])
             ax.tick_params(axis='both', which='major', labelsize=16, colors=C["muted"])
@@ -963,12 +963,12 @@ class GUVDetectorGUI:
             self.append_result("\n=== GLOBAL RESULTS ===")
             self.append_result(f"Total GUVs detected: {len(arr)}")
             self.append_result(f"Edge: {count_edge}  |  Interior: {count_inter}")
-            self.append_result(f"Median: {median:.2f} um  Q1: {q1:.2f} um  Q3: {q3:.2f} um")
-            self.append_result(f"Log-normal  mu={mu_ln:.2f}, sigma={sigma_ln:.2f}")
-            self.append_result(f"Calibration: {calib:.4f} um/pixel (global)")
+            self.append_result(f"Median: {median:.2f} µm  Q1: {q1:.2f} µm  Q3: {q3:.2f} µm")
+            self.append_result(f"Log-normal  µm={mu_ln:.2f}, sigma={sigma_ln:.2f}")
+            self.append_result(f"Calibration: {calib:.4f} µm/pixel (global)")
             self.append_result(f"Plot saved:  {plot_path}")
 
-            self.append_result(f"\n=== GUV dimensions (um) ===")
+            self.append_result(f"\n=== GUV dimensions (µm) ===")
             for i in range(0, len(dim_list), 5):
                 chunk = dim_list[i:i+5]
                 self.append_result("  " + ", ".join(f"{d:.2f}" for d in chunk))
@@ -1144,18 +1144,18 @@ class GUVDetectorGUI:
         ax.hist(dim_list, bins=bins, color=C["primary_light"], alpha=0.6,
                 density=True, edgecolor=C["surface"])
         ax.axvline(median, color=C["deep"], linestyle='dashed', linewidth=3,
-                   label=f'Median: {median:.2f} um')
+                   label=f'Median: {median:.2f} µm')
         ax.axvline(q1, color=C["primary_dark"], linestyle='dashed', linewidth=3,
-                   label=f'Q1: {q1:.2f} um')
+                   label=f'Q1: {q1:.2f} µm')
         ax.axvline(q3, color=C["primary_dark"], linestyle='dashed', linewidth=3,
-                   label=f'Q3: {q3:.2f} um')
+                   label=f'Q3: {q3:.2f} µm')
         if shape is not None:
             x = np.linspace(0, max(dim_list), 1000)
             ax.plot(x, lognorm.pdf(x, shape, loc=loc, scale=scale), color=C["ink"],
                     linestyle='-', linewidth=3,
-                    label=(f'Log-normal fit\nmu={mu_ln:.2f}, sigma={sigma_ln:.2f}\n'
+                    label=(f'Log-normal fit\nµm={mu_ln:.2f}, sigma={sigma_ln:.2f}\n'
                            f'Total GUVs: {len(dim_list)}'))
-        ax.set_xlabel('GUV Diameter (um)', fontsize=20, color=C["ink"])
+        ax.set_xlabel('GUV Diameter (µm)', fontsize=20, color=C["ink"])
         ax.set_ylabel('Density of GUVs', fontsize=20, color=C["ink"])
         ax.set_title(folder_name, fontsize=16, color=C["deep"])
         ax.tick_params(axis='both', which='major', labelsize=16, colors=C["muted"])
@@ -1184,8 +1184,8 @@ class GUVDetectorGUI:
 
         # text summary for this subfolder
         self.append_result(f"  GUVs: {len(arr)}  |  Edge: {count_edge}  |  Interior: {count_inter}")
-        self.append_result(f"  Median: {median:.2f} um  Q1: {q1:.2f} um  Q3: {q3:.2f} um")
-        self.append_result(f"  Log-normal  mu={mu_ln:.2f}, sigma={sigma_ln:.2f}")
+        self.append_result(f"  Median: {median:.2f} µm  Q1: {q1:.2f} µm  Q3: {q3:.2f} µm")
+        self.append_result(f"  Log-normal  µm={mu_ln:.2f}, σ={sigma_ln:.2f}")
         self.append_result(f"  Plot: {plot_path}")
 
     # ------------------------------------------------------------------
