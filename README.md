@@ -277,9 +277,7 @@ The script expects a `predict_{model_size}/` folder inside the test split (gener
 
 ## Robust Estimation
 
-*In-distribution (ID) analysis. The same protocol applied to out-of-distribution acquisitions (e.g. Leica) is left for future work.*
-
-Bounding-box detections are not a perfect count of real GUVs: the model misses some real vesicles (imperfect recall) and occasionally reports false ones (imperfect precision). The *detected* size distribution is therefore a biased sample of the *real* one — before using detection counts for any downstream size-distribution analysis, we need a principled way to correct for that bias.
+Bounding-box detections are not a perfect count of real GUVs: the model misses some real vesicles (imperfect recall) and occasionally reports false ones (imperfect precision). The *detected* size distribution is therefore a biased sample of the *real* one. Before using detection counts for any downstream size-distribution analysis, we need a principled way to correct for that bias.
 
 ### Defining ρ
 
@@ -287,35 +285,32 @@ For a set of detections, let $P = TP/(TP+FP)$ and $R = TP/(TP+FN)$. Since $TP = 
 
 $$N_{\text{real}} = \frac{P}{R} \cdot N_{\text{pred}} = \rho \cdot N_{\text{pred}}, \qquad \rho := \frac{P}{R}$$
 
-$\rho$ is the multiplicative correction factor that turns an observed (predicted) GUV count into an estimate of the real one.
-
-### Why ρ needs to be constant across bins
-
-As pointed out by collaborators reviewing this analysis, $\rho$ is only useful as a *single* correction factor if it does not itself depend on GUV diameter. If $\rho$ varied systematically with size, applying one global value to the whole predicted size distribution would not remove the detection bias — it would replace it with a new, size-dependent one. Checking that $\rho$ is statistically constant across size bins is therefore a prerequisite for trusting it as a correction factor at all.
+$\rho$ is the correction factor that turns an observed (predicted) GUV count into an estimate of the real one.
+Is is useful as a *single* correction factor if it does not itself depend on GUV diameter. If $\rho$ varied systematically with size, applying one global value to the whole predicted size distribution would not remove the detection bias. Checking that $\rho$ is statistically constant across size bins is therefore a prerequisite for trusting it as a correction factor at all.
 
 ### Bin-wise evaluation at the reference operating point
 
 ![Bin-wise evaluation by GUV size (µm), in-distribution — grey YOLOv11_n](guv_detection/images/Eval-um-grey-n_ID.png)
 
-Evaluation at the reference operating point used throughout this project: **confidence threshold = 0.25**, **IoU threshold = 0.5**. The **IoU threshold** here is the *matching* threshold — for each surviving prediction, the best-overlapping unclaimed ground-truth box is found, and the pair counts as a true positive only if `IoU ≥ 0.5` (Intersection-over-Union: overlap area divided by union area); otherwise it's a false positive, and any ground-truth box left unclaimed becomes a false negative. This is different from the NMS IoU used internally by `model.predict()` to suppress duplicate boxes, and from the IoU thresholds `mAP50`/`mAP50-95` sweep internally when integrating the full precision–recall curve — the bin-wise P/R/F1 shown here is a snapshot of a single confidence operating point (0.25) at IoU=0.5, while `mAP50` summarises performance across the *entire* confidence range at that same matching convention.
+Evaluation at the reference operating point used throughout this project: **confidence threshold = 0.25**, **IoU threshold = 0.5**. The **IoU threshold** here is the *matching* threshold: for each surviving prediction, the best-overlapping unclaimed ground-truth box is found, and the pair counts as a true positive only if `IoU ≥ 0.5` (Intersection-over-Union: overlap area divided by union area); otherwise it's a false positive, and any ground-truth box left unclaimed becomes a false negative. The bin-wise P/R/F1 shown here is a snapshot of a single confidence operating point (0.25) at IoU=0.5.
 
-The `0-5 µm` bin stands out: very few detections relative to its ground-truth count, giving an unstable P≈0.23 / R≈0.16 and pushing ρ up to ≈1.47 — a small-sample artifact, not a real effect. From `5-10 µm` upward, Precision, Recall and F1 all settle in the 0.7–0.96 range and ρ stays close to 1.
+The `0-5 µm` bin stands out: very few detections relative to its ground-truth count. From `5-10 µm` upward, Precision, Recall and F1 all settle in the 0.7–0.96 range and ρ stays close to 1.
 
 ### ρ is constant for GUVs larger than 5 µm
 
 ![log(ρ) vs. GUV diameter trend, in-distribution — grey YOLOv11_n](guv_detection/images/RhoTrend-um-grey-n_ID.png)
 
-Fitting the trend of $\log(\rho) = \log(P) - \log(R)$ against bin diameter (cluster-by-image bootstrap, 95% CI) confirms the `0-5 µm` bin is the problem, not a genuine size-dependence: including it, the slope is **significantly negative** (95% CI excludes 0), which would suggest ρ is *not* constant. Excluding only that one bin, the slope drops to essentially zero (95% CI includes 0, *not significant*), with a pooled ρ ≈ 0.876. **For GUVs larger than 5 µm, ρ is statistically constant** — a single global correction factor can be applied across that whole size range without introducing a new size-dependent bias, i.e. it preserves the shape of the corrected distribution.
+Fitting the trend of $\log(\rho) = \log(P) - \log(R)$ against bin diameter (cluster-by-image bootstrap, 95% CI) confirms the `0-5 µm` bin could be consider an outliner: including it, the slope is **significantly negative** (95% CI excludes 0), which would suggest ρ is *not* constant. Excluding only that one bin, the slope drops to essentially zero (95% CI includes 0, *not significant*), with a pooled ρ = 0.876. **For GUVs larger than 5 µm, ρ is statistically constant**. A single global correction factor can be applied across that whole size range without introducing a new size-dependent bias, i.e. it preserves the shape of the corrected distribution.
+
+The 95% CI comes from a cluster-by-image bootstrap: images are resampled with replacement (2000 iterations), the trend is re-fit on each resample, and the CI is the 2.5th/97.5th percentile of the resulting 2000 slopes, resampling whole images, not individual boxes, preserves the correlation between GUVs detected in the same image.
 
 ### Robustness across confidence and IoU thresholds
 
 ![ρ stability heatmap, conf × IoU sweep, excl. 0-5µm bin, in-distribution — grey YOLOv11_n](guv_detection/images/RhoMatrix-excl0-5um-grey-n_ID.png)
 
-The same "excl. 0-5µm" trend fit was repeated across a grid of confidence and IoU thresholds (bootstrap per cell). Gray cells mean the size-trend is significant at that operating point (ρ not trustworthy as a single number there); colored cells mean ρ is constant. **For confidence ≤ 0.40, cells are colored across the entire IoU range (0.50–0.95) with barely any variation in the printed ρ value along each row** — e.g. at conf=0.25, ρ goes from 0.876 down to 0.872 as IoU sweeps from 0.50 to 0.95. In that confidence regime, the correction factor is essentially **independent of which IoU matching threshold is chosen**. At higher confidence thresholds, cells turn gray — the constant-ρ assumption stops holding once the confidence threshold is pushed high enough to discard too many of the harder, smaller detections.
+The same "excl. 0-5µm" trend fit was repeated across a grid of confidence and IoU thresholds (bootstrap per cell). Gray cells mean the size-trend is significant at that operating point (ρ not trustworthy as a single number there); colored cells mean ρ is constant. **For confidence ≤ 0.40, cells are colored across the entire IoU range (0.50–0.95) with barely any variation in the printed ρ value along each row**. At conf=0.25, ρ goes from 0.876 down to 0.872 as IoU sweeps from 0.50 to 0.95. In that confidence regime, the correction factor may be consider **independent of which IoU matching threshold is chosen**. At higher confidence thresholds, cells turn gray, the constant-ρ assumption stops holding once the confidence threshold is pushed high enough to discard too many of the harder, smaller detections.
 
-### Take-away
-
-For this in-distribution dataset, `ρ = P/R` is a robust, single-number correction factor for GUVs **larger than 5 µm**, stable across the whole IoU-matching range as long as the confidence threshold stays **≤ 0.40**. Outside that regime — below 5 µm, or at higher confidence thresholds — ρ can no longer be treated as size- and threshold-independent, and any correction there needs to be handled per-bin/per-operating-point rather than with one global factor.
+For this in-distribution dataset, `ρ = P/R` can be consider a is a robust orrection factor, single-number correction factor for GUVs **larger than 5 µm**, stable across the whole IoU-matching range as long as the confidence threshold stays **≤ 0.40**. Outside that regime, ρ can no longer be treated as size- and threshold-independent, and any correction there needs to be handled per-bin/per-operating-point rather than with one global factor.
 
 ## Dataset
 
