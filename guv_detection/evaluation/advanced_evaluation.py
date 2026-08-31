@@ -296,12 +296,12 @@ def _print_trend(name, z, p_value):
 
 def _fit_log_rho_trend(tp, fp, fn, scores):
     """
-    OLS slope of log(rho) = log(P) - log(R) vs. bin score, over bins with
-    TP > 0. Only meant to be called once per bootstrap resample (see
-    bootstrap_rho): fitting on raw resampled counts, rather than on an
+    OLS slope+intercept of log(rho) = log(P) - log(R) vs. bin score, over
+    bins with TP > 0. Only meant to be called once per bootstrap resample
+    (see bootstrap_rho): fitting on raw resampled counts, rather than on an
     analytic combination of Var(logP) and Var(logR), sidesteps having to
     assume logP and logR are independent — they are not, since both share
-    the same TP count in their numerator.
+    the same TP count in their numerator. Returns (slope, intercept).
     """
     tp = np.asarray(tp, dtype=float)
     fp = np.asarray(fp, dtype=float)
@@ -310,22 +310,40 @@ def _fit_log_rho_trend(tp, fp, fn, scores):
 
     valid = tp > 0
     if valid.sum() < 2:
-        return float('nan')
+        return float('nan'), float('nan')
     P = tp[valid] / (tp[valid] + fp[valid])
     R = tp[valid] / (tp[valid] + fn[valid])
     log_rho = np.log(P / R)
-    slope, _ = np.polyfit(scores[valid], log_rho, 1)
-    return float(slope)
+    slope, intercept = np.polyfit(scores[valid], log_rho, 1)
+    return float(slope), float(intercept)
+
+
+def _observed_log_rho(tp, fp, fn, scores, bin_names):
+    """Per-bin observed log(rho) = log(P) - log(R), restricted to bins with TP > 0."""
+    tp = np.asarray(tp, dtype=float)
+    fp = np.asarray(fp, dtype=float)
+    fn = np.asarray(fn, dtype=float)
+    scores = np.asarray(scores, dtype=float)
+    valid = tp > 0
+    P = tp[valid] / (tp[valid] + fp[valid])
+    R = tp[valid] / (tp[valid] + fn[valid])
+    log_rho = np.log(P / R)
+    weights = (tp + fp + fn)[valid]
+    names = [b for b, ok in zip(bin_names, valid) if ok]
+    return scores[valid], log_rho, weights, names
 
 
 def bootstrap_rho(per_image_stats, bin_names, trend_bins, trend_scores, n_boot=2000, seed=42):
     """
     Cluster bootstrap by image: resamples images with replacement (preserving
     within-image correlation between boxes) and, on each resample, recomputes
-    rho globally, rho per bin, and the OLS trend slope of log(rho) vs. the
-    bin score restricted to `trend_bins`/`trend_scores` (a fixed, pre-filtered
-    subset — see MIN_N_BIN — so every replicate fits the trend on the same
-    physical bins). Returns percentile (2.5/97.5) summaries.
+    rho globally, rho per bin, and the OLS trend line (slope + intercept) of
+    log(rho) vs. the bin score restricted to `trend_bins`/`trend_scores` (a
+    fixed, pre-filtered subset — see MIN_N_BIN — so every replicate fits the
+    trend on the same physical bins). Also evaluates that trend line on a
+    grid spanning `trend_scores`, so a 95% pointwise CI band can be plotted
+    around the fit (see `_draw_rho_trend_plot`). Returns percentile (2.5/97.5)
+    summaries.
     """
     rng = np.random.default_rng(seed)
     images = list(per_image_stats.keys())
@@ -334,6 +352,7 @@ def bootstrap_rho(per_image_stats, bin_names, trend_bins, trend_scores, n_boot=2
     boot_rho_global = np.full(n_boot, np.nan)
     boot_rho_bins   = {b: np.full(n_boot, np.nan) for b in bin_names}
     boot_slope      = np.full(n_boot, np.nan)
+    boot_intercept  = np.full(n_boot, np.nan)
 
     for i in range(n_boot):
         sample = rng.choice(images, size=n_img, replace=True)
@@ -367,7 +386,7 @@ def bootstrap_rho(per_image_stats, bin_names, trend_bins, trend_scores, n_boot=2
         tp_t = np.array([tp_bin[b] for b in trend_bins])
         fp_t = np.array([fp_bin[b] for b in trend_bins])
         fn_t = np.array([fn_bin[b] for b in trend_bins])
-        boot_slope[i] = _fit_log_rho_trend(tp_t, fp_t, fn_t, trend_scores)
+        boot_slope[i], boot_intercept[i] = _fit_log_rho_trend(tp_t, fp_t, fn_t, trend_scores)
 
     def summarize(arr):
         arr = arr[np.isfinite(arr)]
@@ -376,11 +395,29 @@ def bootstrap_rho(per_image_stats, bin_names, trend_bins, trend_scores, n_boot=2
         return {'mean': float(np.mean(arr)), 'ci_lo': float(np.percentile(arr, 2.5)),
                 'ci_hi': float(np.percentile(arr, 97.5)), 'n_valid': int(arr.size)}
 
+    # Pointwise 95% CI band for the fitted line, evaluated on a grid spanning
+    # trend_scores. Needs >=2 distinct scores and >=1 valid bootstrap fit.
+    trend_scores_arr = np.asarray(trend_scores, dtype=float)
+    valid_fit = np.isfinite(boot_slope) & np.isfinite(boot_intercept)
+    if trend_scores_arr.size >= 2 and valid_fit.sum() > 0:
+        x_grid  = np.linspace(trend_scores_arr.min(), trend_scores_arr.max(), 100)
+        y_preds = boot_slope[valid_fit, None] * x_grid[None, :] + boot_intercept[valid_fit, None]
+        trend_line = {
+            'x_grid': x_grid.tolist(),
+            'y_mean': np.mean(y_preds, axis=0).tolist(),
+            'y_lo':   np.percentile(y_preds, 2.5, axis=0).tolist(),
+            'y_hi':   np.percentile(y_preds, 97.5, axis=0).tolist(),
+        }
+    else:
+        trend_line = None
+
     return {
         'n_boot': n_boot,
         'global': summarize(boot_rho_global),
         'per_bin': {b: summarize(boot_rho_bins[b]) for b in bin_names},
         'trend_slope': summarize(boot_slope),
+        'trend_intercept': summarize(boot_intercept),
+        'trend_line': trend_line,
     }
 
 
@@ -466,6 +503,63 @@ def _draw_eval_plot(bin_names, precisions, recalls, f1_scores, rho,
         ax1.legend(lines_1 + lines_2, labels_1 + labels_2,
                    fontsize=FS_LEGEND, loc='upper left')
 
+    # plt.title(title, fontsize=FS_LABEL + 2)
+    plt.tight_layout()
+    plt.show()
+
+
+def _draw_rho_trend_plot(obs_scores, obs_log_rho, obs_weights, obs_names,
+                         slope, intercept, boot_result, xlabel, title, fig_num):
+    """
+    log(rho) = log(P) - log(R) vs. bin diameter: observed per-bin points
+    (marker area ~ TP+FP+FN in that bin), the OLS fit line (observed data),
+    a shaded 95% CI band from the cluster-by-image bootstrap, a y=0
+    reference (P=R), and an annotation box with the bootstrap slope + CI
+    and the significance verdict (CI excludes 0 -> significant trend).
+    """
+    trend_line = boot_result.get('trend_line')
+    if trend_line is None:
+        print(f"  [{title}] insufficient data for a trend-line plot — skipped")
+        return
+
+    fig, ax = plt.subplots(figsize=FIGSIZE, num=fig_num)
+
+    x_grid = np.asarray(trend_line['x_grid'])
+    y_lo   = np.asarray(trend_line['y_lo'])
+    y_hi   = np.asarray(trend_line['y_hi'])
+
+    ax.fill_between(x_grid, y_lo, y_hi, color=COLOR_RHO, alpha=0.15,
+                     label='95% CI (cluster bootstrap by image)', zorder=1)
+    ax.plot(x_grid, slope * x_grid + intercept, color=COLOR_RHO, linewidth=2,
+             zorder=3, label=f'OLS fit (slope={slope:.4f})')
+    ax.axhline(0, color='#888888', linestyle=':', linewidth=1.2, zorder=2,
+               label='log(ρ)=0  (P=R)')
+
+    obs_weights = np.asarray(obs_weights, dtype=float)
+    sizes = 40 + 260 * (obs_weights / obs_weights.max()) if obs_weights.max() > 0 else 60
+    ax.scatter(obs_scores, obs_log_rho, s=sizes, color=COLOR_P, edgecolor='white',
+               linewidth=0.8, zorder=5, label='Observed bins (size ~ N)')
+    for xi, yi, name in zip(obs_scores, obs_log_rho, obs_names):
+        ax.annotate(name, (xi, yi), textcoords="offset points", xytext=(0, 8),
+                    ha='center', fontsize=FS_ANNOT)
+
+    s = boot_result['trend_slope']
+    excludes_zero = np.isfinite(s['ci_lo']) and (s['ci_lo'] > 0 or s['ci_hi'] < 0)
+    verdict = 'significant trend (CI excludes 0)' if excludes_zero else 'no significant trend (CI includes 0)'
+    ax.text(0.02, 0.02,
+            f"Bootstrap slope: {s['mean']:.4f}  95% CI [{s['ci_lo']:.4f}, {s['ci_hi']:.4f}]\n"
+            f"{verdict}  (n_boot valid = {s['n_valid']})",
+            transform=ax.transAxes, fontsize=FS_ANNOT + 2, va='bottom', ha='left',
+            bbox=dict(boxstyle='round', facecolor='white', alpha=0.85, edgecolor='#cccccc'))
+
+    ax.set_xlabel(xlabel, fontsize=FS_LABEL)
+    ax.set_ylabel('log(ρ) = log(P) − log(R)', fontsize=FS_LABEL)
+    ax.tick_params(axis='both', labelsize=FS_TICK)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.yaxis.grid(True, linestyle=':', linewidth=0.8, color='#bbbbbb', zorder=0)
+    ax.set_axisbelow(True)
+    ax.legend(fontsize=FS_LEGEND, loc='best')
     # plt.title(title, fontsize=FS_LABEL + 2)
     plt.tight_layout()
     plt.show()
@@ -649,6 +743,18 @@ def evaluate(folder, model_size, modality):
     _print_bootstrap_rho(boot_result_px)
     print()
 
+    slope_px, intercept_px = _fit_log_rho_trend(
+        tp_arr[trend_mask_px], fp_arr[trend_mask_px], fn_arr[trend_mask_px], trend_scores_px)
+    obs_scores_px, obs_logrho_px, obs_w_px, obs_names_px = _observed_log_rho(
+        tp_arr[trend_mask_px], fp_arr[trend_mask_px], fn_arr[trend_mask_px],
+        trend_scores_px, trend_bins_px)
+    _draw_rho_trend_plot(
+        obs_scores_px, obs_logrho_px, obs_w_px, obs_names_px, slope_px, intercept_px, boot_result_px,
+        xlabel='GUV Size Range midpoint (pixels)',
+        title=f'log(ρ) vs BBox Size trend (px) — {modality} YOLOv11_{model_size}',
+        fig_num=f"RhoTrend-px-{modality}-{model_size}",
+    )
+
     _draw_eval_plot(
         bin_names, precisions, recalls, f1_scores, rhos, num_detected, num_gt,
         xlabel='GUV Size Range (pixels)',
@@ -689,6 +795,18 @@ def evaluate(folder, model_size, modality):
     print("Bootstrap evaluation, cluster-by-image (µm bins):")
     _print_bootstrap_rho(boot_result_um)
     print()
+
+    slope_um, intercept_um = _fit_log_rho_trend(
+        tp_um[trend_mask_um], fp_um[trend_mask_um], fn_um[trend_mask_um], trend_scores_um)
+    obs_scores_um, obs_logrho_um, obs_w_um, obs_names_um = _observed_log_rho(
+        tp_um[trend_mask_um], fp_um[trend_mask_um], fn_um[trend_mask_um],
+        trend_scores_um, trend_bins_um)
+    _draw_rho_trend_plot(
+        obs_scores_um, obs_logrho_um, obs_w_um, obs_names_um, slope_um, intercept_um, boot_result_um,
+        xlabel='GUV Size Range midpoint (µm)',
+        title=f'log(ρ) vs BBox Size trend (µm) — {modality} YOLOv11_{model_size}',
+        fig_num=f"RhoTrend-um-{modality}-{model_size}",
+    )
 
     _draw_eval_plot(
         bin_names_um, prec_um, rec_um, f1_um, rho_um, ndet_um, ngt_um,
