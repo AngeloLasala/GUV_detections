@@ -1,4 +1,4 @@
-# VesciScope - An automatic tool for GUV Detections
+# VesiScope - An automatic tool for GUV Detections
 Automatic detection of **Giant Unilamellar Vesicle (GUV)** in miscroscopic images using YOLOv11
 
 ![example of detection](guv_detection/images/GR06_20240326_NIK_P17_E018_01_05_B1.jpg)
@@ -11,7 +11,7 @@ Check out the [YOLOv11 by Ultralytics](https://docs.ultralytics.com/it/models/yo
 Installation guideline is based on the Anaconda/Miniconda environment. To install Miniconda, refer to the [official documentation](https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html).
 
 
-Create virtual envirorment with ppython version 3.10:
+Create virtual envirornment with python version 3.10:
 
 ```bash
 conda create --name guv python=3.10
@@ -29,16 +29,21 @@ Clone the repository to your local machine. If git in not installed in new env u
 git clone git@github.com:AngeloLasala/GUV_detections.git
 ```
 
-Move on `\guv_detection` girectory and install packeges with the following comand:
+Move to `\guv_detection` directory, activate the virtual environment and install packages with the following comand:
 ```bash
 pip install -e .
 ```
 
 **!! Note !!**: The Ultralytics package automatically installs the necessary NVIDIA and CUDA dependencies required for GPU usage.
 
-## VesciScope – Create the Desktop App
+Move to `\guv_detection\app` directory and launch the app with the following comand:
+```bash
+python app.py
+```
 
-To build your local **VesciScope** app, first make sure the repository is correctly installed (see the Installation section).
+## VesiScope – Create the Desktop App
+
+To build your local **VesiScope** app, first make sure the repository is correctly installed (see the Installation section).
 
 After installation, copy your trained model file `best.pth` into the appropriate folder:
 
@@ -54,7 +59,7 @@ Then, from the root directory of the project, run:
 python build_app.py
 ```
 
-Once the build process is completed, the executable file **VesciScope.exe** will be created inside the `dist/` folder.
+Once the build process is completed, the executable file **VesiScope.exe** will be created inside the `dist/` folder.
 You can copy the .exe file to your desktop (or any preferred location), double-click it, and start using the app.
 
 ### Spatial calibration — µm/pixel conversion factors
@@ -139,7 +144,7 @@ label-studio
 
 Open the project, and follow this guideline for setting the local file envirormnet for [Setuping connection in Label Studio UI](https://labelstud.io/guide/storage#Set-up-connection-in-the-Label-Studio-UI-4)
 
-- Open **Setting > Cloude Storage**
+- Open **Setting > Cloud Storage**
 - Click **Add Source Storage**
 - Select **Local Files** as the storage type
 - Insert a name for your storage title: example Leica Angelo
@@ -174,7 +179,7 @@ It creates `predict\labels` with file `image_1.txt` that cointains predicted bou
 ```bash
 python create_json.py --document_root document_root --folder_path folder_path
 ```
-For **VesciScope** users, the `import.json` file is automatically created during inference phase.
+For **VesiScope** users, the `import.json` file is automatically created during inference phase.
 
 ## Usage for custom training
 
@@ -250,7 +255,7 @@ $$\text{size} = \frac{\sqrt{d_{\max}^2 + d_{\min}^2}}{\sqrt{2}} \times \mu\text{
 
 where $d_{\max}$ and $d_{\min}$ are the longer and shorter sides of the bounding box in pixels.
 
-The figure below shows the evaluation of the **YOLOv11-nano** model trained on **greyscale** images (Nikon, 0.1205 µm/pixel). The model achieves consistently high Recall (> 0.85) across all size ranges, with Precision slightly lower for very small GUVs (< 2 µm), where detections are sparse.
+The figure below shows the evaluation of the **YOLOv11-nano** model trained on **greyscale** images (Nikon, 0.1205 µm/pixel) with a confidence threshold = 0.25 and IoU = 0.5. The model achieves consistently high Recall (> 0.85) across all size ranges, with Precision slightly lower for very small GUVs (< 2 µm), where detections are sparse.
 
 ![Evaluation by GUV size (µm) — grey YOLOv11_n](guv_detection/images/Eval-um-grey-n.png)
 
@@ -283,10 +288,11 @@ Bounding-box detections are not a perfect count of real GUVs: the model misses s
 
 For a set of detections, let $P = TP/(TP+FP)$ and $R = TP/(TP+FN)$. Since $TP = P \cdot N_{\text{pred}} = R \cdot N_{\text{real}}$ (where $N_{\text{pred}} = TP+FP$ is the detected count and $N_{\text{real}} = TP+FN$ is the true count), it follows that:
 
-$$N_{\text{real}} = \frac{P}{R} \cdot N_{\text{pred}} = \rho \cdot N_{\text{pred}}, \qquad \rho := \frac{P}{R}$$
+$$N_{\text{real}} = \frac{P}{R} \cdot N_{\text{pred}} = \rho \cdot N_{\text{pred}}$$
+$$\rho = \frac{P}{R}$$
 
 $\rho$ is the correction factor that turns an observed (predicted) GUV count into an estimate of the real one.
-Is is useful as a *single* correction factor if it does not itself depend on GUV diameter. If $\rho$ varied systematically with size, applying one global value to the whole predicted size distribution would not remove the detection bias. Checking that $\rho$ is statistically constant across size bins is therefore a prerequisite for trusting it as a correction factor at all.
+It is useful as a *single* correction factor if it does not itself depend on GUV diameter. If $\rho$ varied systematically with size, applying one global value to the whole predicted size distribution would not remove the detection bias. Checking that $\rho$ is statistically constant across size bins is therefore a prerequisite for trusting it as a correction factor at all.
 
 ### Bin-wise evaluation at the reference operating point
 
@@ -314,6 +320,6 @@ For this in-distribution dataset, `ρ = P/R` can be consider a is a robust orrec
 
 ## Dataset
 
-The annotated dataset used to train and evaluate VesciScope will be available at the following repository:
+The annotated dataset used to train and evaluate VesiScope will be available at the following repository:
 
 [GUV Dataset Repository](https://github.com/AngeloLasala/GUV_dataset)
