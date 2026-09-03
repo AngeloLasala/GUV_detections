@@ -1,4 +1,4 @@
-# VesciScope - An automatic tool for GUV Detections
+# VesiScope - An automatic tool for GUV Detections
 Automatic detection of **Giant Unilamellar Vesicle (GUV)** in miscroscopic images using YOLOv11
 
 ![example of detection](guv_detection/images/GR06_20240326_NIK_P17_E018_01_05_B1.jpg)
@@ -36,9 +36,9 @@ pip install -e .
 
 **!! Note !!**: The Ultralytics package automatically installs the necessary NVIDIA and CUDA dependencies required for GPU usage.
 
-## VesciScope – Create the Desktop App
+## VesiScope – Create the Desktop App
 
-To build your local **VesciScope** app, first make sure the repository is correctly installed (see the Installation section).
+To build your local **VesiScope** app, first make sure the repository is correctly installed (see the Installation section).
 
 After installation, copy your trained model file `best.pth` into the appropriate folder:
 
@@ -54,7 +54,7 @@ Then, from the root directory of the project, run:
 python build_app.py
 ```
 
-Once the build process is completed, the executable file **VesciScope.exe** will be created inside the `dist/` folder.
+Once the build process is completed, the executable file **VesiScope.exe** will be created inside the `dist/` folder.
 You can copy the .exe file to your desktop (or any preferred location), double-click it, and start using the app.
 
 ### Spatial calibration — µm/pixel conversion factors
@@ -139,7 +139,7 @@ label-studio
 
 Open the project, and follow this guideline for setting the local file envirormnet for [Setuping connection in Label Studio UI](https://labelstud.io/guide/storage#Set-up-connection-in-the-Label-Studio-UI-4)
 
-- Open **Setting > Cloude Storage**
+- Open **Setting > Cloud Storage**
 - Click **Add Source Storage**
 - Select **Local Files** as the storage type
 - Insert a name for your storage title: example Leica Angelo
@@ -174,7 +174,7 @@ It creates `predict\labels` with file `image_1.txt` that cointains predicted bou
 ```bash
 python create_json.py --document_root document_root --folder_path folder_path
 ```
-For **VesciScope** users, the `import.json` file is automatically created during inference phase.
+For **VesiScope** users, the `import.json` file is automatically created during inference phase.
 
 ## Usage for custom training
 
@@ -314,6 +314,6 @@ For this in-distribution dataset, `ρ = P/R` can be consider a is a robust orrec
 
 ## Dataset
 
-The annotated dataset used to train and evaluate VesciScope will be available at the following repository:
+The annotated dataset used to train and evaluate VesiScope will be available at the following repository:
 
 [GUV Dataset Repository](https://github.com/AngeloLasala/GUV_dataset)
