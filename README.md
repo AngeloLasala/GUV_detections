@@ -11,7 +11,7 @@ Check out the [YOLOv11 by Ultralytics](https://docs.ultralytics.com/it/models/yo
 Installation guideline is based on the Anaconda/Miniconda environment. To install Miniconda, refer to the [official documentation](https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html).
 
 
-Create virtual envirorment with python version 3.10:
+Create virtual envirornment with python version 3.10:
 
 ```bash
 conda create --name guv python=3.10
@@ -29,7 +29,7 @@ Clone the repository to your local machine. If git in not installed in new env u
 git clone git@github.com:AngeloLasala/GUV_detections.git
 ```
 
-Move on `\guv_detection` girectory and install packeges with the following comand:
+Move on `\guv_detection` directory and install packages with the following comand:
 ```bash
 pip install -e .
 ```
