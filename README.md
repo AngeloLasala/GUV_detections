@@ -29,12 +29,17 @@ Clone the repository to your local machine. If git in not installed in new env u
 git clone git@github.com:AngeloLasala/GUV_detections.git
 ```
 
-Move on `\guv_detection` directory and install packages with the following comand:
+Move to `\guv_detection` directory, activate the virtual environment and install packages with the following comand:
 ```bash
 pip install -e .
 ```
 
 **!! Note !!**: The Ultralytics package automatically installs the necessary NVIDIA and CUDA dependencies required for GPU usage.
+
+Move to `\guv_detection\app` directory and launch the app with the following comand:
+```bash
+python app.py
+```
 
 ## VesiScope – Create the Desktop App
 
