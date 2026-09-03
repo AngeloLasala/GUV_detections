@@ -288,10 +288,11 @@ Bounding-box detections are not a perfect count of real GUVs: the model misses s
 
 For a set of detections, let $P = TP/(TP+FP)$ and $R = TP/(TP+FN)$. Since $TP = P \cdot N_{\text{pred}} = R \cdot N_{\text{real}}$ (where $N_{\text{pred}} = TP+FP$ is the detected count and $N_{\text{real}} = TP+FN$ is the true count), it follows that:
 
-$$N_{\text{real}} = \frac{P}{R} \cdot N_{\text{pred}} = \rho \cdot N_{\text{pred}}, \qquad \rho := \frac{P}{R}$$
+$$N_{\text{real}} = \frac{P}{R} \cdot N_{\text{pred}} = \rho \cdot N_{\text{pred}}$$
+$$\rho = \frac{P}{R}$$
 
 $\rho$ is the correction factor that turns an observed (predicted) GUV count into an estimate of the real one.
-Is is useful as a *single* correction factor if it does not itself depend on GUV diameter. If $\rho$ varied systematically with size, applying one global value to the whole predicted size distribution would not remove the detection bias. Checking that $\rho$ is statistically constant across size bins is therefore a prerequisite for trusting it as a correction factor at all.
+It is useful as a *single* correction factor if it does not itself depend on GUV diameter. If $\rho$ varied systematically with size, applying one global value to the whole predicted size distribution would not remove the detection bias. Checking that $\rho$ is statistically constant across size bins is therefore a prerequisite for trusting it as a correction factor at all.
 
 ### Bin-wise evaluation at the reference operating point
 
