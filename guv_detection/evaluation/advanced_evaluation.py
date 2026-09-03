@@ -252,6 +252,10 @@ def bootstrap_rho(per_image_stats, bin_names, trend_variants, n_boot=2000, seed=
             'bins': tb, 'scores': ts,
             'slope': summarize(slope_arr), 'intercept': summarize(intercept_arr),
             'trend_line': trend_line,
+            # Raw per-resample fit, kept (not just the 95% summary) so a
+            # specific point can be checked at any CI level without
+            # re-running the bootstrap — see _print_ci_outliers.
+            'boot_slope': slope_arr[valid_fit], 'boot_intercept': intercept_arr[valid_fit],
         }
 
     return {
@@ -283,6 +287,62 @@ def _print_bootstrap_rho(result):
                   f"mean={s['mean']:.4f}, 95% CI=[{s['ci_lo']:.4f}, {s['ci_hi']:.4f}] -> {verdict}")
         else:
             print(f"  Bootstrap trend slope of log(rho) [{label}]: insufficient data — skipped")
+
+
+def _print_ci_outliers(obs_scores, obs_log_rho, obs_names, variants, unit_label,
+                       extra_levels=(96, 97, 98, 99, 99.5, 99.9)):
+    """
+    Console-only diagnostic (no plot): for each fitted variant, checks every
+    observed per-bin log(rho) point against that variant's own bootstrap
+    95% CI band, evaluated exactly at the bin's score (direct evaluation of
+    the raw per-resample fits `boot_slope`/`boot_intercept` at that x — not
+    an interpolation of the 100-point plotting grid). A point outside the
+    band is not necessarily anomalous: the band is a CI on where the fitted
+    *line* lies (parameter uncertainty), not a prediction interval for
+    individual data points, so it's expected to be narrower than the
+    natural bin-to-bin scatter. For every outside point, widens the CI
+    level step by step (`extra_levels`) and reports the first level at
+    which the point falls inside — i.e. "how far outside the 95% band" in
+    CI-level terms.
+    """
+    print(f"CI-outlier check ({unit_label} bins) — reminder: the band is a 95% CI on the "
+          f"fitted line (parameter uncertainty), not a prediction interval for individual "
+          f"bins, so points sitting outside it are not automatically a red flag:")
+
+    any_outlier = False
+    for v in variants:
+        trend_result = v['trend_result']
+        boot_slope, boot_intercept = trend_result['boot_slope'], trend_result['boot_intercept']
+        if boot_slope.size == 0:
+            continue
+        domain_bins = set(trend_result['bins'])
+
+        for x_b, y_b, name in zip(obs_scores, obs_log_rho, obs_names):
+            if name not in domain_bins:
+                continue
+            y_boot = boot_slope * x_b + boot_intercept
+            lo95, hi95 = np.percentile(y_boot, [2.5, 97.5])
+            if lo95 <= y_b <= hi95:
+                continue
+
+            any_outlier = True
+            found_level = None
+            for level in extra_levels:
+                tail = (100 - level) / 2
+                lo, hi = np.percentile(y_boot, [tail, 100 - tail])
+                if lo <= y_b <= hi:
+                    found_level = level
+                    break
+            if found_level is not None:
+                print(f"    [{v['label']}] bin {name}: log(ρ)={y_b:.4f} outside 95% CI "
+                      f"[{lo95:.4f}, {hi95:.4f}] -> falls inside at CI={found_level:g}%")
+            else:
+                print(f"    [{v['label']}] bin {name}: log(ρ)={y_b:.4f} outside 95% CI "
+                      f"[{lo95:.4f}, {hi95:.4f}] -> still outside even at {extra_levels[-1]:g}% CI")
+
+    if not any_outlier:
+        print("    none — every observed bin falls inside its variant's 95% CI band")
+    print()
 
 
 def _draw_eval_plot(bin_names, precisions, recalls, f1_scores, rho,
@@ -479,6 +539,8 @@ def _run_rho_trend_analysis(per_image_stats, bin_names, tp_arr, fp_arr, fn_arr, 
             'rho': rho_v,
             'trend_result': boot_result['trends'][label],
         })
+
+    _print_ci_outliers(obs_scores, obs_logrho, obs_names, variants, unit_label)
 
     _draw_rho_trend_plot(
         obs_scores, obs_logrho, obs_w, obs_names, variants,
