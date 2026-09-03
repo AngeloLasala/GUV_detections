@@ -325,9 +325,9 @@ For this in-distribution dataset, `ρ = P/R` can be consider a is a robust orrec
 ![Bin-wise evaluation by GUV size (µm), out-of-distribution — grey YOLOv11_n](guv_detection/images/Eval-um-grey-n_OOD.png)
 ![log(ρ) vs. GUV diameter trend, out-of-distribution — grey YOLOv11_n](guv_detection/images/RhoTrend-um-grey-n_OOD.png)
 
-Repeating the analysis on Leica acquisitions (no retraining) confirms the warning: **ρ = 1.529** [95% CI 1.430–1.633] here, against **ρ = 0.891** [0.855–0.926] in-distribution — the two intervals do not overlap. ρ is not just numerically different, it changes regime (below 1 → above 1): recall degrades far more than precision under this domain shift.
+Repeating the analysis on Leica acquisitions (no retraining) confirms the warning: **ρ = 1.529** [95% CI 1.430–1.633] here, against **ρ = 0.891** [0.855–0.926] in-distribution, the two intervals do not overlap. ρ is not just numerically different, it changes regime (below 1 for ID, above 1 for OOD): recall degrades far more than precision under this domain shift.
 
-The bin-wise trend is also less trustworthy than in-distribution. The aggregate slope test alone says "no significant trend", but that test only detects a *monotonic* drift with size and is blind to a non-monotonic one. Checking each bin against its own bootstrap CI shows most bins sit well outside it (5 of 7 bins in the full fit, 4 of 6 even after dropping the smallest bin), with log(ρ) swinging up and down rather than following a consistent trend — a picture the slope test alone would miss.
+The bin-wise trend is also less trustworthy than in-distribution. The aggregate slope test alone says "no significant trend", but that test only detects a *monotonic* drift with size and is blind to a non-monotonic one. Checking each bin against its own bootstrap CI shows most bins sit well outside it (5 of 7 bins in the full fit, 4 of 6 even after dropping the smallest bin), with log(ρ) swinging up and down rather than following a consistent trend, a picture the slope test alone would miss.
 
 **Conclusion**: because this check reports precision, recall and ρ together, not just one number, a user testing the model on their own data can look at the same evidence and decide, concretely, whether ρ is trustworthy as-is or whether fine-tuning on their own annotated subset is the safer path.
 
