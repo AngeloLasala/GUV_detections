@@ -255,7 +255,7 @@ $$\text{size} = \frac{\sqrt{d_{\max}^2 + d_{\min}^2}}{\sqrt{2}} \times \mu\text{
 
 where $d_{\max}$ and $d_{\min}$ are the longer and shorter sides of the bounding box in pixels.
 
-The figure below shows the evaluation of the **YOLOv11-nano** model trained on **greyscale** images (Nikon, 0.1205 µm/pixel). The model achieves consistently high Recall (> 0.85) across all size ranges, with Precision slightly lower for very small GUVs (< 2 µm), where detections are sparse.
+The figure below shows the evaluation of the **YOLOv11-nano** model trained on **greyscale** images (Nikon, 0.1205 µm/pixel) with a confidence threshold = 0.25 and IoU = 0.5. The model achieves consistently high Recall (> 0.85) across all size ranges, with Precision slightly lower for very small GUVs (< 2 µm), where detections are sparse.
 
 ![Evaluation by GUV size (µm) — grey YOLOv11_n](guv_detection/images/Eval-um-grey-n.png)
 
