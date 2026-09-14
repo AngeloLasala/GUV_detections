@@ -930,7 +930,7 @@ class GUVDetectorGUI:
                 x = np.linspace(0, max(dim_list), 1000)
                 pdf = lognorm.pdf(x, shape, loc=loc, scale=scale)
                 ax.plot(x, pdf, color=C["ink"], linestyle='-', linewidth=3,
-                        label=(f'Log-normal fit\nµm={mu_ln:.2f}, σ={sigma_ln:.2f}\n'
+                        label=(f'Log-normal fit\nµ={mu_ln:.2f}, σ={sigma_ln:.2f}\n'
                                f'Total GUVs: {len(dim_list)}'))
             ax.set_xlabel('GUV Diameter (µm)', fontsize=20, color=C["ink"])
             ax.set_ylabel('Density of GUVs', fontsize=20, color=C["ink"])
@@ -964,7 +964,7 @@ class GUVDetectorGUI:
             self.append_result(f"Total GUVs detected: {len(arr)}")
             self.append_result(f"Edge: {count_edge}  |  Interior: {count_inter}")
             self.append_result(f"Median: {median:.2f} µm  Q1: {q1:.2f} µm  Q3: {q3:.2f} µm")
-            self.append_result(f"Log-normal  µm={mu_ln:.2f}, σ={sigma_ln:.2f}")
+            self.append_result(f"Log-normal  µ={mu_ln:.2f}, σ={sigma_ln:.2f}")
             self.append_result(f"Calibration: {calib:.4f} µm/pixel (global)")
             self.append_result(f"Plot saved:  {plot_path}")
 
@@ -1153,7 +1153,7 @@ class GUVDetectorGUI:
             x = np.linspace(0, max(dim_list), 1000)
             ax.plot(x, lognorm.pdf(x, shape, loc=loc, scale=scale), color=C["ink"],
                     linestyle='-', linewidth=3,
-                    label=(f'Log-normal fit\nµm={mu_ln:.2f}, σ={sigma_ln:.2f}\n'
+                    label=(f'Log-normal fit\nµ={mu_ln:.2f}, σ={sigma_ln:.2f}\n'
                            f'Total GUVs: {len(dim_list)}'))
         ax.set_xlabel('GUV Diameter (µm)', fontsize=20, color=C["ink"])
         ax.set_ylabel('Density of GUVs', fontsize=20, color=C["ink"])
@@ -1185,7 +1185,7 @@ class GUVDetectorGUI:
         # text summary for this subfolder
         self.append_result(f"  GUVs: {len(arr)}  |  Edge: {count_edge}  |  Interior: {count_inter}")
         self.append_result(f"  Median: {median:.2f} µm  Q1: {q1:.2f} µm  Q3: {q3:.2f} µm")
-        self.append_result(f"  Log-normal  µm={mu_ln:.2f}, σ={sigma_ln:.2f}")
+        self.append_result(f"  Log-normal  µ={mu_ln:.2f}, σ={sigma_ln:.2f}")
         self.append_result(f"  Plot: {plot_path}")
 
     # ------------------------------------------------------------------

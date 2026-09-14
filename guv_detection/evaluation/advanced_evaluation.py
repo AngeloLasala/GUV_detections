@@ -465,8 +465,8 @@ def _draw_rho_trend_plot(obs_scores, obs_log_rho, obs_weights, obs_names,
         ax.annotate(name, (xi, yi), textcoords="offset points", xytext=(0, 8),
                     ha='center', fontsize=FS_ANNOT)
 
-    ax.text(0.02, 0.02, "\n".join(summary_lines),
-            transform=ax.transAxes, fontsize=FS_ANNOT + 2, va='bottom', ha='left',
+    ax.text(0.02, 0.98, "\n".join(summary_lines),
+            transform=ax.transAxes, fontsize=FS_ANNOT + 2, va='top', ha='left',
             bbox=dict(boxstyle='round', facecolor='white', alpha=0.85, edgecolor='#cccccc'))
 
     ax.set_xlabel(xlabel, fontsize=FS_LABEL)
@@ -476,7 +476,7 @@ def _draw_rho_trend_plot(obs_scores, obs_log_rho, obs_weights, obs_names,
     ax.spines['right'].set_visible(False)
     ax.yaxis.grid(True, linestyle=':', linewidth=0.8, color='#bbbbbb', zorder=0)
     ax.set_axisbelow(True)
-    ax.legend(fontsize=FS_LEGEND, loc='best')
+    ax.legend(fontsize=FS_LEGEND, loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0)
     # plt.title(title, fontsize=FS_LABEL + 2)
     plt.tight_layout()
     plt.show()
