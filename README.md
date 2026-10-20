@@ -80,7 +80,7 @@ Label studio is an open source platform usefull for creating a userfrandly inter
 For the sake of simplicity, in this project, we guide the  installation process using [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html)
 
 ### Create the GUV Detection project
-First of all create a virtul env where install the requirement packeges for Label-studio. For Anacondo/Miniconda env:
+First of all create a virtual environment to install all the required packages for Label-studio. For Anaconda/Miniconda env:
 ```bash
 conda create --name label-studio python=3.10
 conda activate label-studio
