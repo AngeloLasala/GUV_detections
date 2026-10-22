@@ -24,7 +24,7 @@ conda deactivate
 conda activate guv
 ``` 
 
-Clone the repository to your local machine. If git in not installed in new env use `conda install git`.
+Clone the repository to your local machine. If git is not installed in new env use `conda install git`.
 ```bash
 git clone git@github.com:AngeloLasala/GUV_detections.git
 ```
