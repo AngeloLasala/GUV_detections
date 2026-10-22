@@ -324,7 +324,8 @@ The same "excl. 0-5µm" trend fit was repeated across a grid of confidence and I
 
 For this in-distribution dataset, `ρ = P/R` can be consider a is a robust orrection factor, single-number correction factor for GUVs **larger than 5 µm**, stable across the whole IoU-matching range as long as the confidence threshold stays **≤ 0.40**. Outside that regime, ρ can no longer be treated as size- and threshold-independent, and any correction there needs to be handled per-bin/per-operating-point rather than with one global factor.
 
-## 4.2.5 - Does the correction factor transfer? Leica (OOD), no fine-tuning
+## 4.2.5 - Correction factor transferability to OOD
+<!-- Does the correction factor transfer? Leica (OOD), no fine-tuning-->
 
 **ρ is not, in principle, guaranteed to generalise to other data.** It is calibrated on a specific dataset; applying it unchanged to different acquisition conditions can be wrong. The same statistical protocol used above can be run on any new, unseen dataset to judge whether ρ is trustworthy there before using it.
 
