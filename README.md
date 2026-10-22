@@ -62,7 +62,7 @@ python build_app.py
 Once the build process is completed, the executable file **VesiScope.exe** will be created inside the `dist/` folder.
 You can copy the .exe file to your desktop (or any preferred location), double-click it, and start using the app.
 
-### 1.2.1 - Spatial calibration via µm/pixel conversion factors
+## 1.3 - Spatial calibration via µm/pixel conversion factors
 
 The app requires a calibration factor to convert pixel measurements to physical units (micrometres). The known values for the microscopes used in this project are:
 
