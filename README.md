@@ -1,4 +1,4 @@
-# VesiScope - An automatic tool for GUV Detections
+# 1 - VesiScope - An automatic tool for GUV Detections
 Automatic detection of **Giant Unilamellar Vesicle (GUV)** in miscroscopic images using YOLOv11
 
 ![example of detection](guv_detection/images/GR06_20240326_NIK_P17_E018_01_05_B1.jpg)
@@ -7,7 +7,7 @@ This project implements an object detection pipeline using the YOLOv11 algorithm
 
 Check out the [YOLOv11 by Ultralytics](https://docs.ultralytics.com/it/models/yolo11/) for more detailed information about object detection model.
 
-## Install
+## 1.1 - Installation
 Installation guideline is based on the Anaconda/Miniconda environment. To install Miniconda, refer to the [official documentation](https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html).
 
 
@@ -41,7 +41,7 @@ Move to `\guv_detection\app` directory and launch the app with the following com
 python app.py
 ```
 
-## VesiScope – Create the Desktop App
+## 1.2 - Create the Desktop App
 
 To build your local **VesiScope** app, first make sure the repository is correctly installed (see the Installation section).
 
@@ -62,7 +62,7 @@ python build_app.py
 Once the build process is completed, the executable file **VesiScope.exe** will be created inside the `dist/` folder.
 You can copy the .exe file to your desktop (or any preferred location), double-click it, and start using the app.
 
-### Spatial calibration — µm/pixel conversion factors
+### 1.2.1 - Spatial calibration via µm/pixel conversion factors
 
 The app requires a calibration factor to convert pixel measurements to physical units (micrometres). The known values for the microscopes used in this project are:
 
@@ -73,13 +73,13 @@ The app requires a calibration factor to convert pixel measurements to physical 
 
 You can enter the value directly in the app's µm/pixel field, or use the interactive calibration window to derive a custom factor from a known reference distance on your image.
 
-## Label Studio Interface - Create GUV project
+# 2 - Manual (re)annotation of GUVs through Label Studio
 
-Label studio is an open source platform usefull for creating a userfrandly interface to laod an annotate dataset for diverse type of ML project. Here, we provide a simple guideline for creating a project releated to GUV detection
+Label studio is an open source platform useful for creating a userfriendly interface to load an annotate dataset for diverse type of ML project. Here, we provide a simple guideline for creating a project releated to GUV detection
 
 For the sake of simplicity, in this project, we guide the  installation process using [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html)
 
-### Create the GUV Detection project
+## 2.1 - Create the GUV Detection project on Label Studio
 First of all create a virtual environment to install all the required packages for Label-studio. For Anaconda/Miniconda env:
 ```bash
 conda create --name label-studio python=3.10
@@ -94,7 +94,7 @@ conda activate label-studio
 label-studio
 ```
 
-Create an object detection progect following the label-studio interface. Select **Object Detection with Bounding Boxes** project. The **code view** for object detection is:
+Create an object detection project following the label-studio interface. Select **Object Detection with Bounding Boxes** project. The **code view** for object detection is:
 ```
 <View>
   <Image name="image" value="$image"/>
@@ -104,21 +104,31 @@ Create an object detection progect following the label-studio interface. Select 
   <Label value="Empty_GUV" background="#FFA39E"/></RectangleLabels>
 </View>
 ```
-At this stage, you can load the images and start the manual annotations.
+At this stage, you can either load unannotated images or images partially annotated by VesiScope to start the manual annotations.
 
-**NOTE!!**: the Label studio interface runs on a localholst 8080 that must be activate during the usage. The suggestion is to open an *Anaconda prompt (Miniconda)* and lanch the above code without closing the windows.
+**NOTE!!**: the Label studio interface runs on a localholst 8080 that must be activated during the usage. The suggestion is to open an *Anaconda prompt (Miniconda)* and lanch the above code without closing the windows.
 
-Here an example of label studio project for GUV manual annotation
-![example of label-studio project](guv_detection/images/example_ls.png)
+## 2.2 - Create `import.json` file with pre-annotation
 
-Once the annotations are done, go to **Export** -> **YOLO with Images** to get images and label ready to be use for training and/or testing Yolov11 model!!
+For desktop app users, the `import.json` file is automatically created during inference phase therefore this step can be skipped.
 
-### Import Images and Pre-annotation with JSON file
+For obtaing pre-annotations, use a trained model that returns the bounding box of GUVs. For details about the training see [this section](#Training). Run the following code:
 
+```bash
+python inference.py --model "path:to_model_weight.pth" --folder "document_root/folder_path"
+```
+
+It creates `predict\labels` with file `image_1.txt` that cointains predicted bounding boxes. The, you can generate `import.json` with the following command
+
+```bash
+python create_json.py --document_root document_root --folder_path folder_path
+```
+
+## 2.3 - Import Images and Pre-annotation with JSON file
 This guide explains how to import images and pre-annotated data into a Label Studio project using a JSON file. This approach allows you to create tasks efficiently and optionally include pre-annotations.
 For details about the JSON format and the preannotation see [Basic Label studio JSON format](https://labelstud.io/guide/tasks#Basic-Label-Studio-JSON-format) and [Import pre-annotated data into Label Studio](https://labelstud.io/guide/predictions)
 
-Before open the label-studio project, you have to lunch wiht the permission to access a local path. Organize your files in a structured directory:
+Before open the label-studio project, you have to launch the software with the permission to access a local path. Organize your files in a structured directory:
 
 ```
 | document_root
@@ -136,13 +146,13 @@ export LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT="document_root"
 ```
 For **Windows users**, use the command  `set` in **Command Prompt** terminal instead of `export` for setting the above variables.
 
-Then, start label-studio:
+Then launch Label Studio:
 
 ```bash
 label-studio
 ```
 
-Open the project, and follow this guideline for setting the local file envirormnet for [Setuping connection in Label Studio UI](https://labelstud.io/guide/storage#Set-up-connection-in-the-Label-Studio-UI-4)
+Open the project, and follow this guideline for setting the local file envirormnet and [setup connection in Label Studio UI](https://labelstud.io/guide/storage#Set-up-connection-in-the-Label-Studio-UI-4)
 
 - Open **Setting > Cloud Storage**
 - Click **Add Source Storage**
@@ -163,28 +173,24 @@ Again, **DO NOT click** on **Sync Storage** in this phase. For **Windows users**
 - Go to the **Project > Import**
 - Import a file  `import.json`
   
-Then, the user can use Label Studio interface to edit the annotations: manually adding/deleting bounding boxes of GUVs and exporting the updated JSON file at the end of re-annotation process.
-After this step, run the code [analysis.py](https://github.com/AngeloLasala/GUV_detections/tree/main/guv_detection/pre_annotation) to obtain a more precise size distribution analysis. 
+## 2.4 - Size distribution analysis on manually annotated GUVs in Label Studio and 
+Here is an example of label studio project for GUV manual annotation
+![example of label-studio project](guv_detection/images/example_ls.png)
 
-### How to create `import.json` file - Pre-annotation
+Following manual annotations in Label Studio, go to **Export** -> **JSON** and run the code [analysis.py](https://github.com/AngeloLasala/GUV_detections/tree/main/guv_detection/pre_annotation) on the exported JSON file to obtain a more precise size distribution analysis:
 
-For obtaing pre-annotations, use a trained model that returns the bounding box of GUVs. For details about the training see [this section](#Training). Run the following code:
-
-```bash
-python inference.py --model "path:to_model_weight.pth" --folder "document_root/folder_path"
+```
+python analyser.py --json_file "\filepath\filename.json"
 ```
 
-It creates `predict\labels` with file `image_1.txt` that cointains predicted bounding boxes. The, you can generate `import.json` with the following command
+# 3 - Custom model (re)training
 
-```bash
-python create_json.py --document_root document_root --folder_path folder_path
-```
-For **VesiScope** users, the `import.json` file is automatically created during inference phase.
+## 3.1 Dataset
+The dataset used to train and validate the GUV Detector consists of microscopy images of GUVs, annotated by expert researchers in the field. 
 
-## Usage for custom training
+Following manual annotations in Label Studio, go to **Export** -> **YOLO with Images** to get images and label ready for training and/or testing Yolov11 model.
 
-### Dataset
-The dataset used to train and validate the GUV Detector consists of microscopy images of GUVs, annotated by expert researchers in the field. The data is organized as follows:
+The data is organized as follows:
 
 ```
 | DATA
@@ -210,7 +216,7 @@ Each corresponding label.txt file must follow the Ultralytics YOLO annotation fo
 
 To ensure compatibility and prevent errors, use the **Label Studio Interface – Create GUV Project** guide above to take full advantage of Label Studio for annotation!
 
-### Training
+## 3.2 - Local training
 
 Once the dataset is prepared, you can train your custom model using the `train.py` script.
 
@@ -228,7 +234,7 @@ The dataset folder used for training must be organized as follows:
 ```
 Each modality (e.g., `rgb`, `grey`) should contain its own DATA directory with the standard `train`, `val`, and `test` subfolders.
 
-### Training on Google Colab
+## 3.3 - Training on Google Colab
 
 For GPU-accelerated training without a local GPU, two ready-to-use Colab notebooks are provided in `guv_detection/tools/`:
 
@@ -245,7 +251,7 @@ Both notebooks follow the same pipeline:
 
 Before opening a notebook, upload the `train/`, `val/`, and `test/` folders together with `data.yaml` to the corresponding Google Drive directory, then run all cells in order. Trained weights are saved under `runs/detect/trainX/weights/best.pt`.
 
-## Evaluation
+# 4 - Model performance evaluation
 
 Model performance is evaluated bin-wise by GUV size, using IoU-based matching (IoU ≥ 0.5) between predicted and ground-truth bounding boxes. For each size bin, Precision, Recall, and F1-score are computed alongside the raw detection counts.
 
@@ -263,7 +269,7 @@ The same evaluation expressed in **raw pixel units** is shown below. The model p
 
 ![Evaluation by GUV size (pixels) — grey YOLOv11_n](guv_detection/images/Eval-px-grey-n.png)
 
-### Out-of-distribution generalisation — Leica
+## 4.1 - Out-of-distribution generalisation — Leica
 
 To assess cross-domain generalisation, the same model (no retraining) was evaluated on Leica acquisitions, which differ from the training distribution in microscope optics, pixel size (0.45 µm/pixel), and image contrast. The figure below uses the same bin-wise protocol as above but with Leica calibration applied.
 
@@ -280,11 +286,11 @@ python guv_detection/evaluation/advanced_evaluation.py \
 
 The script expects a `predict_{model_size}/` folder inside the test split (generated by `test.py`) and produces two figures: one with bbox sizes in pixels and one in µm. -->
 
-## Robust Estimation
+# 4.2 - Robust Estimation
 
 Bounding-box detections are not a perfect count of real GUVs: the model misses some real vesicles (imperfect recall) and occasionally reports false ones (imperfect precision). The *detected* size distribution is therefore a biased sample of the *real* one. Before using detection counts for any downstream size-distribution analysis, we need a principled way to correct for that bias.
 
-### Defining ρ
+## 4.2.1 - Defining ρ
 
 For a set of detections, let $P = TP/(TP+FP)$ and $R = TP/(TP+FN)$. Since $TP = P \cdot N_{\text{pred}} = R \cdot N_{\text{real}}$ (where $N_{\text{pred}} = TP+FP$ is the detected count and $N_{\text{real}} = TP+FN$ is the true count), it follows that:
 
@@ -294,7 +300,7 @@ $$\rho = \frac{P}{R}$$
 $\rho$ is the correction factor that turns an observed (predicted) GUV count into an estimate of the real one.
 It is useful as a *single* correction factor if it does not itself depend on GUV diameter. If $\rho$ varied systematically with size, applying one global value to the whole predicted size distribution would not remove the detection bias. Checking that $\rho$ is statistically constant across size bins is therefore a prerequisite for trusting it as a correction factor at all.
 
-### Bin-wise evaluation at the reference operating point
+## 4.2.2 - Bin-wise evaluation at the reference operating point
 
 ![Bin-wise evaluation by GUV size (µm), in-distribution — grey YOLOv11_n](guv_detection/images/Eval-um-grey-n_ID.png)
 
@@ -302,7 +308,7 @@ Evaluation at the reference operating point used throughout this project: **conf
 
 The `0-5 µm` bin stands out: very few detections relative to its ground-truth count. From `5-10 µm` upward, Precision, Recall and F1 all settle in the 0.7–0.96 range and ρ stays close to 1.
 
-### ρ is constant for GUVs larger than 5 µm
+## 4.2.3 - ρ is constant for GUVs larger than 5 µm
 
 ![log(ρ) vs. GUV diameter trend, in-distribution — grey YOLOv11_n](guv_detection/images/RhoTrend-um-grey-n_ID.png)
 
@@ -310,7 +316,7 @@ Fitting the trend of $\log(\rho) = \log(P) - \log(R)$ against bin diameter (clus
 
 The 95% CI comes from a cluster-by-image bootstrap: images are resampled with replacement (2000 iterations), the trend is re-fit on each resample, and the CI is the 2.5th/97.5th percentile of the resulting 2000 slopes, resampling whole images, not individual boxes, preserves the correlation between GUVs detected in the same image.
 
-### Robustness across confidence and IoU thresholds
+## 4.2.4 - Robustness across confidence and IoU thresholds
 
 ![ρ stability heatmap, conf × IoU sweep, excl. 0-5µm bin, in-distribution — grey YOLOv11_n](guv_detection/images/RhoMatrix-excl0-5um-grey-n_ID.png)
 
@@ -318,7 +324,7 @@ The same "excl. 0-5µm" trend fit was repeated across a grid of confidence and I
 
 For this in-distribution dataset, `ρ = P/R` can be consider a is a robust orrection factor, single-number correction factor for GUVs **larger than 5 µm**, stable across the whole IoU-matching range as long as the confidence threshold stays **≤ 0.40**. Outside that regime, ρ can no longer be treated as size- and threshold-independent, and any correction there needs to be handled per-bin/per-operating-point rather than with one global factor.
 
-### Does the correction factor transfer? Leica (OOD), no fine-tuning
+## 4.2.5 - Does the correction factor transfer? Leica (OOD), no fine-tuning
 
 **ρ is not, in principle, guaranteed to generalise to other data.** It is calibrated on a specific dataset; applying it unchanged to different acquisition conditions can be wrong. The same statistical protocol used above can be run on any new, unseen dataset to judge whether ρ is trustworthy there before using it.
 
@@ -331,8 +337,8 @@ The bin-wise trend is also less trustworthy than in-distribution. The aggregate 
 
 **Conclusion**: because this check reports precision, recall and ρ together, not just one number, a user testing the model on their own data can look at the same evidence and decide, concretely, whether ρ is trustworthy as-is or whether fine-tuning on their own annotated subset is the safer path.
 
-## Dataset
+## 4.2.6 - Dataset
 
-The annotated dataset used to train and evaluate VesiScope will be available at the following repository:
+The annotated dataset used to train and evaluate VesiScope is available at the following repository:
 
 [GUV Dataset Repository](https://github.com/AngeloLasala/GUV_dataset)
