@@ -1,5 +1,6 @@
 """
 Convert the annotation from xml (used for YOLOv3) to txt (used for YOLOv7 and YOLOv11).
+Current versions of Label Studio exports txt formats compatible with YOLOv7 and above so this conversion is no longer needed.
 """
 import time
 import os
