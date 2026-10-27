@@ -79,36 +79,7 @@ Label studio is an open source platform useful for creating a userfriendly inter
 
 For the sake of simplicity, in this project, we guide the  installation process using [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html)
 
-## 2.1 - Create the GUV detection project on Label Studio
-First of all create a virtual environment to install all the required packages for Label-studio. For Anaconda/Miniconda env:
-```bash
-conda create --name label-studio python=3.10
-conda activate label-studio
-conda install psycopg2
-pip install label-studio
-```
-
-Open the label-studio interface with the following comand lines:
-```bash
-conda activate label-studio
-label-studio
-```
-
-Create an object detection project following the label-studio interface. Select **Object Detection with Bounding Boxes** project. The **code view** for object detection is:
-```
-<View>
-  <Image name="image" value="$image"/>
-  <RectangleLabels name="label" toName="image">
-    
-    
-  <Label value="Empty_GUV" background="#FFA39E"/></RectangleLabels>
-</View>
-```
-At this stage, you can either load unannotated images or images partially annotated by VesiScope to start the manual annotations.
-
-**NOTE!!**: the Label studio interface runs on a localholst 8080 that must be activated during the usage. The suggestion is to open an *Anaconda prompt (Miniconda)* and lanch the above code without closing the windows.
-
-## 2.2 - Create `import.json` file with pre-annotation
+## 2.1 - Create `import.json` file with pre-annotation
 
 For desktop app users, the `import.json` file is automatically created during inference phase therefore this step can be skipped.
 
@@ -124,11 +95,24 @@ It creates `predict\labels` with file `image_1.txt` that cointains predicted bou
 python create_json.py --document_root document_root --folder_path folder_path
 ```
 
-## 2.3 - Import images and pre-annotation with JSON file
-This guide explains how to import images and pre-annotated data into a Label Studio project using a JSON file. This approach allows you to create tasks efficiently and optionally include pre-annotations.
-For details about the JSON format and the preannotation see [Basic Label studio JSON format](https://labelstud.io/guide/tasks#Basic-Label-Studio-JSON-format) and [Import pre-annotated data into Label Studio](https://labelstud.io/guide/predictions)
+## 2.2 - Create the GUV detection project on Label Studio
+First of all create a virtual environment to install all the required packages for Label-studio. For Anaconda/Miniconda env:
+```bash
+conda create --name label-studio python=3.10
+conda activate label-studio
+conda install psycopg2
+pip install label-studio
+```
 
-Before open the label-studio project, you have to launch the software with the permission to access a local path. Organize your files in a structured directory:
+<!-- Open the label-studio interface with the following comand lines:
+```bash
+conda activate label-studio
+label-studio
+```
+-->
+Before opening a Label Studio project, the software requires permissions to access a local path. For this purpose set the following environment variables:
+
+<!-- First Organize your files in a directory structured as follows:
 
 ```
 | document_root
@@ -137,20 +121,49 @@ Before open the label-studio project, you have to launch the software with the p
 |   |   |-- image_2.jpg
 |   |   |-- image_n.jpg
 ```
-
-To allow Label Studio to access local files, set the following environment variables:
-
+-->
+*Linux users*
 ```bash
 export LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
 export LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT="document_root"
 ```
-For **Windows users**, use the command  `set` in **Command Prompt** terminal instead of `export` for setting the above variables.
 
-Then launch Label Studio:
+*Windows users*
+```bash
+set LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
+set LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=document_root
+```
+
+Replace *document_root* with the complete path of the folder containing the images processed by VesiScope.
+**NOTE!!**: Windows users may experience issues with long path names, therefore it is recommended to copy the folder into a temporary folder with short path (like Desktop or Downloads folders).
+In some PCs, it is possible to overcome this issue by enabling Windows to process long file names. For this purpose, open the registry editor, go to "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem", find the LongPathsEnabled entry, double-click it, set its value to 1 and reboot the system.  
+
+Launch Label Studio:
 
 ```bash
 label-studio
 ```
+Create a new project.
+Add a name then move to "Labeling Setup" and scroll down to "Custom template"
+Paste the following **code view** for object detection:
+```
+<View>
+  <Image name="image" value="$image"/>
+  <RectangleLabels name="label" toName="image">
+    
+    
+  <Label value="Empty_GUV" background="#FFA39E"/></RectangleLabels>
+</View>
+```
+Save the project.
+
+At this stage, you can either load unannotated images or images partially annotated by VesiScope to start the manual annotations.
+
+**NOTE!!**: the Label studio interface runs on a localholst 8080 that must be activated during the usage. The suggestion is to open an *Anaconda prompt (Miniconda)* and lanch the above code without closing the windows.
+
+## 2.3 - Import images and pre-annotation with JSON file
+This guide explains how to import images and pre-annotated data into a Label Studio project using a JSON file. This approach allows you to create tasks efficiently and optionally include pre-annotations.
+For details about the JSON format and the preannotation see [Basic Label studio JSON format](https://labelstud.io/guide/tasks#Basic-Label-Studio-JSON-format) and [Import pre-annotated data into Label Studio](https://labelstud.io/guide/predictions)
 
 Open the project, and follow this guideline for setting the local file envirormnet and [setup connection in Label Studio UI](https://labelstud.io/guide/storage#Set-up-connection-in-the-Label-Studio-UI-4)
 
@@ -158,7 +171,7 @@ Open the project, and follow this guideline for setting the local file envirormn
 - Click **Add Source Storage**
 - Select **Local Files** as the storage type
 - Insert a name for your storage title: example Leica Angelo
-- Specify an **Absolute local path** to the directory with your files. For the tree configuration above insert  `document_root/folder_path`. Then **Text Connection** and click **Next**
+- Specify the **Absolute local path** to the directory with your files by replacing *your-subdirectory* with *processing_images*. <!-- For the tree configuration above insert  `document_root/folder_path`. Then **Test Connection** and click **Next**-->
 - *(Optional)* In the File Filter Regex field, specify a regular expression to filter bucket objects. Use .* to collect all objects.
 - *(Optional)* In the Import method dropdown, choose how to import your data:
     - Files - Automatically creates a task for each storage object (e.g. JPG, MP3, TXT). Use this if you want to create Label Studio tasks from media files automatically. Use this option for labeling configurations with one source tag.
@@ -171,7 +184,7 @@ Example of storage setup in Label Studio:
 Again, **DO NOT click** on **Sync Storage** in this phase. For **Windows users**, use the correct symbol (`\`) for concatenating paths
 
 - Go to the **Project > Import**
-- Import a file  `import.json`
+- Import the `json` file in the *processing_images* folder
   
 ## 2.4 - Size distribution analysis on manually annotated GUVs in Label Studio and 
 Here is an example of label studio project for GUV manual annotation
@@ -180,8 +193,9 @@ Here is an example of label studio project for GUV manual annotation
 Following manual annotations in Label Studio, go to **Export** -> **JSON** and run the code [analysis.py](https://github.com/AngeloLasala/GUV_detections/tree/main/guv_detection/pre_annotation) on the exported JSON file to obtain a more precise size distribution analysis:
 
 ```
-python analyser.py --json_file "\filepath\filename.json"
+python analyser.py --json_file "\filepath\filename.json" --parent_save_folder "\filepath" --conversion_factor 0.339
 ```
+Specify the absolute path of the input json file and the output folder, together with the conversion factor
 
 # 3 - Custom model (re)training
 
