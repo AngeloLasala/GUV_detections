@@ -191,10 +191,10 @@ Again, **DO NOT click** on **Sync Storage** in this phase. For **Windows users**
 Here is an example of label studio project for GUV manual annotation
 ![example of label-studio project](guv_detection/images/example_ls.png)
 
-Following manual annotations in Label Studio, go to **Export** -> **JSON** and run the code [analysis.py](https://github.com/AngeloLasala/GUV_detections/tree/main/guv_detection/pre_annotation) on the exported JSON file to obtain a more precise size distribution analysis:
+Following manual annotations in Label Studio, go to **Export** -> **JSON** and run the code [GUV_analyser.py](https://github.com/AngeloLasala/GUV_detections/tree/main/guv_detection/pre_annotation) on the exported JSON file to obtain a more precise size distribution analysis:
 
 ```
-python analyser.py --json_file "\filepath\filename.json" --parent_save_folder "\filepath" --conversion_factor 0.339
+python GUV_analyser.py --json_file "\filepath\filename.json" --parent_save_folder "\filepath" --conversion_factor 0.339
 ```
 Specify the absolute path of the input json file and the output folder, together with the conversion factor
 
