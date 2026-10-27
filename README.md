@@ -185,7 +185,7 @@ Example of storage setup in Label Studio:
 Again, **DO NOT click** on **Sync Storage** in this phase. For **Windows users**, use the correct symbol (`\`) for concatenating paths
 
 - Go to the **Project > Import**
-- Import the `json` file in the *processing_images* folder
+- Import the `json` file from the *processing_images* folder
   
 ## 2.4 - Size distribution analysis on manually annotated GUVs in Label Studio and 
 Here is an example of label studio project for GUV manual annotation
