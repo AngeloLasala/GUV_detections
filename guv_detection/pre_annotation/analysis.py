@@ -1,5 +1,6 @@
 """
-Main code for the analysis of the annotations.
+OLD code for the analysis of the annotations.
+A new version of the script to generate also a csv file is provided by GUV_analyser.py
 """
 import os
 import json
