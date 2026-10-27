@@ -135,6 +135,7 @@ set LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=document_root
 ```
 
 Replace *document_root* with the complete path of the folder containing the images processed by VesiScope.
+
 **NOTE!!**: Windows users may experience issues with long path names, therefore it is recommended to copy the folder into a temporary folder with short path (like Desktop or Downloads folders).
 In some PCs, it is possible to overcome this issue by enabling Windows to process long file names. For this purpose, open the registry editor, go to "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem", find the LongPathsEnabled entry, double-click it, set its value to 1 and reboot the system.  
 
