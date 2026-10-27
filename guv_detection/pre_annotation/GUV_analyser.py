@@ -1,5 +1,9 @@
 """
 Main code for the analysis of the annotations.
+The script require a json file exported by Label Studio as input and provides three outputs:
+- CSV file with GUV diameters list
+- TXT file with diameters and statistics
+- PNG file showing GUVs size distribution
 """
 import os
 import json
